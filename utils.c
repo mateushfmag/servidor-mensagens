@@ -34,9 +34,8 @@ int addrParse(const char *addrStr, const char *portStr, struct sockaddr_storage 
     }
 
 
-
     struct in6_addr inaddr6;// 128-bit ipv6 address
-    if(inet_pton(AF_INET6,addrStr,&inaddr6)){   
+    if(inet_pton(AF_INET6,addrStr,&inaddr6)){
         struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)storage;
         addr6->sin6_family = AF_INET6;
         addr6->sin6_port = port;
@@ -65,7 +64,7 @@ void add2str(const struct sockaddr *addr, char *str, size_t strsize){
     }else if(addr->sa_family == AF_INET6){
         version = 6;
         struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)addr;
-        if(!inet_ntop(AF_INET, &(addr6->sin6_addr), addrstr, INET6_ADDRSTRLEN+1)){
+        if(!inet_ntop(AF_INET6, &(addr6->sin6_addr), addrstr, INET6_ADDRSTRLEN+1)){
             myError("ntop");
         }
         port = ntohs(addr6->sin6_port); // network to host short
@@ -98,7 +97,7 @@ int server_sockaddr_init(const char *proto, const char *portStr, struct sockaddr
         return 0;
     }else if(strcmp(proto,"v6") == 0){
         struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)storage;
-        addr6->sin6_family = AF_INET;
+        addr6->sin6_family = AF_INET6;
         addr6->sin6_port = port;
         addr6-> sin6_addr = in6addr_any;
         return 0;

@@ -38,6 +38,11 @@ int main(int argc, char **argv){
         myError("socket error");
     }
 
+    int enable = 1;
+    if(setsockopt(mySocket, SOL_SOCKET, SO_REUSEADDR,&enable,sizeof(int)) != 0){
+        myError("setsockopt");
+    }
+
     struct sockaddr *addr = (struct sockaddr *)(&storage);
 
     if(bind(mySocket, addr, sizeof(storage)) != 0){
