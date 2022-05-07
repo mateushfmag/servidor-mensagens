@@ -78,8 +78,8 @@ int main(int argc, char **argv){
 
         char buf[BUFFSIZE];
         size_t count = recv(clientSocket, buf,BUFFSIZE,0);
-        memset(buf,0,BUFFSIZE);
         printf("[msg] %s, %d bytes: %s\n", clientAddrStr, (int)count, buf);
+        memset(buf,0,BUFFSIZE);
 
         sprintf(buf,"remote endpoint: %.1000s\n", clientAddrStr);
         count = send(clientSocket, buf, strlen(buf)+1,0);
@@ -87,7 +87,6 @@ int main(int argc, char **argv){
             myError("send");
         }
         close(clientSocket);
-
     }
 
 
