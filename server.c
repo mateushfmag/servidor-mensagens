@@ -22,8 +22,6 @@ int main(int argc, char **argv){
         usageTerms(argc,argv);
     }
 
-
-
     struct sockaddr_storage storage;
 
     if(server_sockaddr_init(argv[1], argv[2],&storage) != 0){
@@ -79,15 +77,17 @@ int main(int argc, char **argv){
         char buf[BUFFSIZE];
 
         size_t count = recv(clientSocket, buf,BUFFSIZE,0);
-        printf("[msg] %s, %d bytes: %s\n", clientAddrStr, (int)count, buf);
-
 
         /**
          * one recv call is not enough to get all data sent from send()
          * **/
         unsigned total = 0;
-        while(count != -1 && count != 0){
+        while(1){
+            printf("[msg] %s, %d bytes: %s", clientAddrStr, (int)count, buf);
             count = recv(clientSocket, buf + total, BUFFSIZE - total,0);
+            if(count == -1 || count == 0){
+                break;
+            }
             total += count;
         }
 
