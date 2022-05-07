@@ -9,7 +9,7 @@
 #define BUFFSIZE 1024
 
 void usageTerms(int argc, char **argv){
-    printf("usage: %s", "<server_ip> <server_port>\n",argv[0]);
+    printf("usage: %s <server_ip> <server_port>\n",argv[0]);
     printf("example: %s", "127.0.0.1 51511\n");
     exit(EXIT_FAILURE);
 }
@@ -50,8 +50,8 @@ int main(int argc, char **argv){
     memset(buf,0,BUFFSIZE);
     printf("mensagem > ");
     fgets(buf,BUFFSIZE-1,stdin);
-    size_t count = send(mySocket,buf,strln(buf)+1,0);
-    if(count != strln(buf)+1){
+    size_t count = send(mySocket,buf,strlen(buf)+1,0);
+    if(count != strlen(buf)+1){
         myError("communication error");
     }
 

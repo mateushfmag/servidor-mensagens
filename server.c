@@ -50,8 +50,8 @@ int main(int argc, char **argv){
     }
 
     char addrstr[BUFFSIZE];
-    addr2str(addr,addrstr, BUFFSIZE);
-    printf("bound to %s, waiting connectino\n", addrstr);
+    add2str(addr,addrstr, BUFFSIZE);
+    printf("bound to %s, waiting connection\n", addrstr);
 
     while(1){
 
@@ -68,7 +68,7 @@ int main(int argc, char **argv){
         }
         
         char clientAddrStr[BUFFSIZE];
-        addr2str(clientAddr,clientAddrStr, BUFFSIZE);
+        add2str(clientAddr,clientAddrStr, BUFFSIZE);
         printf("[log] connection from %s\n", clientAddrStr);
 
         char buf[BUFFSIZE];

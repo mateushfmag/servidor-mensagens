@@ -1,4 +1,6 @@
 all:
-	gcc -Wall -c ./src/utils.c
-	gcc -Wall ./src/client.c ./utils.o -o client
-	gcc -Wall ./src/server.c ./utils.o -o server
+	gcc -Wall -c ./utils.c
+	gcc -Wall ./client.c ./utils.o -o client
+	gcc -Wall ./server.c ./utils.o -o server
+clean:
+	rm -rf client.o a.out server.o utils.o
