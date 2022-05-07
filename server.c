@@ -77,8 +77,20 @@ int main(int argc, char **argv){
         printf("[log] connection from %s\n", clientAddrStr);
 
         char buf[BUFFSIZE];
+
         size_t count = recv(clientSocket, buf,BUFFSIZE,0);
         printf("[msg] %s, %d bytes: %s\n", clientAddrStr, (int)count, buf);
+
+
+        /**
+         * one recv call is not enough to get all data sent from send()
+         * **/
+        unsigned total = 0;
+        while(count != -1 && count != 0){
+            count = recv(clientSocket, buf + total, BUFFSIZE - total,0);
+            total += count;
+        }
+
         memset(buf,0,BUFFSIZE);
 
         sprintf(buf,"remote endpoint: %.1000s\n", clientAddrStr);
