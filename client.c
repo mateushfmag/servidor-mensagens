@@ -48,29 +48,19 @@ int main(int argc, char **argv){
     printf("connected to %s\n", addrstr);
     char buf[BUFFSIZE];
     memset(buf,0,BUFFSIZE);
-    printf("mensagem > ");
-    fgets(buf,BUFFSIZE-1,stdin);
-    size_t count = send(mySocket,buf,strlen(buf)+1,0);
-    if(count != strlen(buf)+1){
-        myError("communication error");
-    }
+    while(strncmp(buf,"kill",5) != 0){
+        memset(buf,0,BUFFSIZE);
+        printf("mensagem > ");
+        fgets(buf,BUFFSIZE-1,stdin);
+        printf("MENSAGEM RECEBIDA:%s",buf);
 
-    memset(buf,0,BUFFSIZE);
-
-    unsigned total = 0;
-
-    while(1){
-        count = recv(mySocket, buf + total, BUFFSIZE - total,0);
-        if(count == -1 || count == 0){
-            break;
+        size_t count = send(mySocket,buf,strlen(buf)+1,0);
+        if(count != strlen(buf)+1){
+            myError("communication error");
         }
-        total += count;
+        buf[strcspn(buf, "\r\n")] = '\0';
     }
-
-    printf("Received %d bytes\n",total);
-
     close(mySocket);
-
     exit(EXIT_SUCCESS);
 
 }
