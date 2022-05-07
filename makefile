@@ -3,4 +3,4 @@ all:
 	gcc -Wall ./client.c ./utils.o -o client
 	gcc -Wall ./server.c ./utils.o -o server
 clean:
-	rm -rf client.o a.out server.o utils.o
+	rm -rf client server client.o a.out server.o utils.o
