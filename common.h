@@ -12,4 +12,6 @@ int server_sockaddr_init(const char *proto, const char *portStr, struct sockaddr
 
 void myError(const char *msg);
 
+int digits_only(const char *s);
+
 #endif

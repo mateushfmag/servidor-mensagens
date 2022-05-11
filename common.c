@@ -4,11 +4,20 @@
 #include <stdio.h>
 #include <arpa/inet.h>
 #include <string.h>
-
+#include <ctype.h>
 
 void myError(const char *msg){
     perror(msg);
     exit(EXIT_FAILURE);
+}
+
+int digits_only(const char *s)
+{
+    while (*s) {
+        if (isdigit(*s++) == 0) return 0;
+    }
+
+    return 1;
 }
 
 int addrParse(const char *addrStr, const char *portStr, struct sockaddr_storage *storage){

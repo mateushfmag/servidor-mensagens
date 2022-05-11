@@ -7,7 +7,7 @@
 #include <unistd.h>
 
 #define BUFFSIZE 1024
-
+#define len(a)(sizeof(a)/sizeof(a[0]))
 
 
 void usageTerms(int argc, char **argv){
@@ -16,8 +16,11 @@ void usageTerms(int argc, char **argv){
     exit(EXIT_FAILURE);
 }
 
-
 int main(int argc, char **argv){
+
+
+    char *commands[2] = {"add", "list"};
+
     if(argc < 3){
         usageTerms(argc,argv);
     }
@@ -84,12 +87,79 @@ int main(int argc, char **argv){
         unsigned total = 0;
         while(1){
             printf("[msg] %s, %d bytes: %s", clientAddrStr, (int)count, buf);
+            
+            char *clientMessage = strtok(buf," ");
+            int index = 0;
+            char *command;
+            char *sensorsList[BUFFSIZE];
+            while(clientMessage){
+                // verify if first token is a valid command 
+                if(index == 0){
+                    int found = 0;
+                    for(int i=0;i<len(commands);i++){
+                        // equal
+                        if(strcmp(clientMessage,commands[i]) == 0){
+                            printf("COMMAND DETECTED: %s\n", commands[i]);
+                            command = commands[i];
+                            found = 1;
+                        }
+                    }
+                    if(found == 0){
+                        printf("TODO: HANDLE ERROR COMMAND NOT FOUND\n");
+                        exit(EXIT_FAILURE);
+                    }
+
+                }else { // other tokens
+
+                    if(digits_only(clientMessage)){
+                        /**
+                         * find last element from array
+                        */
+                        int idx=0;
+                        size_t arraySize = len(sensorsList);
+                        while(sensorsList[idx] != 0){
+                            ++idx;
+                        }
+                        if(idx < arraySize){
+                            sensorsList[idx] = clientMessage;
+                        }
+                        /**
+                         * find last element from array
+                        */
+
+                    }
+                }
+                ++index;
+                clientMessage = strtok(NULL," "); // verify next token
+            }
+
+            /**
+             * print data
+            */
+                printf("COMMAND: %s\n",command);
+                for(int i=0;i<len(sensorsList);i++){
+                    if(sensorsList[i]){
+                        printf("SENSOR: %s\n", sensorsList[i]);
+                    }else{
+                        break;
+                    }
+                }
+                printf("\n");
+            /**
+             * print data
+            */
+
             count = recv(clientSocket, buf + total, BUFFSIZE - total,0);
             if(count == -1 || count == 0){
                 break;
             }
             total += count;
+
+            printf("MESSAGE SENT: %s\n",buf);
+
         }
+
+        printf("END OF LOOP");
 
         memset(buf,0,BUFFSIZE);
 
