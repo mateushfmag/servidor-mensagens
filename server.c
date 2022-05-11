@@ -7,10 +7,68 @@
 #include <unistd.h>
 
 #define BUFFSIZE 1024
-#define COMMANDS      \
-    {                 \
-        "add", "list" \
+
+typedef struct Query
+{
+    char *command;
+    char *sensorsList[BUFFSIZE];
+} Query;
+
+Query str2query(char *clientMessage)
+{
+    char *commands[2] = {"add", "list"};
+    Query query;
+    int index = 0;
+    while (clientMessage)
+    {
+        // verify if first token is a valid command
+        if (index == 0)
+        {
+            int found = 0;
+            for (int i = 0; i < len(commands); i++)
+            {
+                // equal
+                if (strcmp(clientMessage, commands[i]) == 0)
+                {
+                    printf("COMMAND DETECTED: %s\n", commands[i]);
+                    query.command = commands[i];
+                    found = 1;
+                }
+            }
+            if (found == 0)
+            {
+                printf("TODO: HANDLE ERROR COMMAND NOT FOUND\n");
+                exit(EXIT_FAILURE);
+            }
+        }
+        else
+        { // other tokens
+
+            if (digits_only(clientMessage))
+            {
+                /**
+                 * find last element from array
+                 */
+                int idx = 0;
+                size_t arraySize = len(query.sensorsList);
+                while (query.sensorsList[idx] != 0)
+                {
+                    ++idx;
+                }
+                if (idx < arraySize)
+                {
+                    query.sensorsList[idx] = clientMessage;
+                }
+                /**
+                 * find last element from array
+                 */
+            }
+        }
+        ++index;
+        clientMessage = strtok(NULL, " "); // verify next token
     }
+    return query;
+}
 
 void usageTerms(int argc, char **argv)
 {
@@ -85,8 +143,6 @@ int initClientSocket(int serverSocket)
 int main(int argc, char **argv)
 {
 
-    char *commands[2] = {"add", "list"};
-
     int serverSocket = initServerSocket(argc, argv);
 
     while (1)
@@ -105,67 +161,17 @@ int main(int argc, char **argv)
             printf("[msg] %d bytes: %s", (int)count, buf);
 
             char *clientMessage = strtok(buf, " ");
-            int index = 0;
-            char *command;
-            char *sensorsList[BUFFSIZE];
-            while (clientMessage)
-            {
-                // verify if first token is a valid command
-                if (index == 0)
-                {
-                    int found = 0;
-                    for (int i = 0; i < len(commands); i++)
-                    {
-                        // equal
-                        if (strcmp(clientMessage, commands[i]) == 0)
-                        {
-                            printf("COMMAND DETECTED: %s\n", commands[i]);
-                            command = commands[i];
-                            found = 1;
-                        }
-                    }
-                    if (found == 0)
-                    {
-                        printf("TODO: HANDLE ERROR COMMAND NOT FOUND\n");
-                        exit(EXIT_FAILURE);
-                    }
-                }
-                else
-                { // other tokens
-
-                    if (digits_only(clientMessage))
-                    {
-                        /**
-                         * find last element from array
-                         */
-                        int idx = 0;
-                        size_t arraySize = len(sensorsList);
-                        while (sensorsList[idx] != 0)
-                        {
-                            ++idx;
-                        }
-                        if (idx < arraySize)
-                        {
-                            sensorsList[idx] = clientMessage;
-                        }
-                        /**
-                         * find last element from array
-                         */
-                    }
-                }
-                ++index;
-                clientMessage = strtok(NULL, " "); // verify next token
-            }
+            Query query = str2query(clientMessage);
 
             /**
              * print data
              */
-            printf("COMMAND: %s\n", command);
-            for (int i = 0; i < len(sensorsList); i++)
+            printf("COMMAND: %s\n", query.command);
+            for (int i = 0; i < len(query.sensorsList); i++)
             {
-                if (sensorsList[i])
+                if (query.sensorsList[i])
                 {
-                    printf("SENSOR: %s\n", sensorsList[i]);
+                    printf("SENSOR: %s\n", query.sensorsList[i]);
                 }
                 else
                 {
