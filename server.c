@@ -12,6 +12,7 @@ typedef struct Query
 {
     char *command;
     char *sensorsList[BUFFSIZE];
+    char *targetEquipment;
 } Query;
 
 Query str2query(char *clientMessage)
@@ -19,8 +20,10 @@ Query str2query(char *clientMessage)
     char *commands[2] = {"add", "list"};
     Query query;
     int index = 0;
+    int isSensor = 1;
     while (clientMessage)
     {
+        clientMessage[strcspn(clientMessage, "\n")] = 0;
         // verify if first token is a valid command
         if (index == 0)
         {
@@ -30,7 +33,6 @@ Query str2query(char *clientMessage)
                 // equal
                 if (strcmp(clientMessage, commands[i]) == 0)
                 {
-                    printf("COMMAND DETECTED: %s\n", commands[i]);
                     query.command = commands[i];
                     found = 1;
                 }
@@ -41,32 +43,59 @@ Query str2query(char *clientMessage)
                 exit(EXIT_FAILURE);
             }
         }
-        else
-        { // other tokens
+        else // other tokens
+        {
+            if (strcmp(clientMessage, "in") == 0 || strcmp(clientMessage, "at") == 0 || strcmp(clientMessage, "on") == 0)
+            {
+                isSensor = 0;
+            }
 
             if (digits_only(clientMessage))
             {
-                /**
-                 * find last element from array
-                 */
-                int idx = 0;
-                size_t arraySize = len(query.sensorsList);
-                while (query.sensorsList[idx] != 0)
+
+                if (isSensor)
                 {
-                    ++idx;
+                    /**
+                     * find last element from array
+                     */
+                    int idx = 0;
+                    size_t arraySize = len(query.sensorsList);
+                    while (query.sensorsList[idx] != 0)
+                    {
+                        ++idx;
+                    }
+                    if (idx < arraySize)
+                    {
+                        query.sensorsList[idx] = clientMessage;
+                    }
+                    /**
+                     * find last element from array
+                     */
                 }
-                if (idx < arraySize)
-                {
-                    query.sensorsList[idx] = clientMessage;
+                else
+                { // is equipment
+                    query.targetEquipment = clientMessage;
                 }
-                /**
-                 * find last element from array
-                 */
             }
         }
         ++index;
         clientMessage = strtok(NULL, " "); // verify next token
     }
+    printf("\n[QUERY RESULT]\n\nCommand: %s\nSensors List:", query.command);
+
+    for (int i = 0; i < len(query.sensorsList); i++)
+    {
+        if (query.sensorsList[i])
+        {
+
+            printf(" %s", query.sensorsList[i]);
+        }
+        else
+        {
+            break;
+        }
+    }
+    printf("\nTarget Equipment: %s\n\n", query.targetEquipment);
     return query;
 }
 
@@ -162,26 +191,6 @@ int main(int argc, char **argv)
 
             char *clientMessage = strtok(buf, " ");
             Query query = str2query(clientMessage);
-
-            /**
-             * print data
-             */
-            printf("COMMAND: %s\n", query.command);
-            for (int i = 0; i < len(query.sensorsList); i++)
-            {
-                if (query.sensorsList[i])
-                {
-                    printf("SENSOR: %s\n", query.sensorsList[i]);
-                }
-                else
-                {
-                    break;
-                }
-            }
-            printf("\n");
-            /**
-             * print data
-             */
 
             count = recv(clientSocket, buf + total, BUFFSIZE - total, 0);
             if (count == -1 || count == 0)
