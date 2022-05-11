@@ -7,169 +7,196 @@
 #include <unistd.h>
 
 #define BUFFSIZE 1024
-#define len(a)(sizeof(a)/sizeof(a[0]))
+#define COMMANDS      \
+    {                 \
+        "add", "list" \
+    }
 
-
-void usageTerms(int argc, char **argv){
+void usageTerms(int argc, char **argv)
+{
     printf("usage: %s <v4|v6> <server_port>\n", argv[0]);
     printf("example: %s v4 51511\n", argv[0]);
     exit(EXIT_FAILURE);
 }
 
-int main(int argc, char **argv){
-
-
-    char *commands[2] = {"add", "list"};
-
-    if(argc < 3){
-        usageTerms(argc,argv);
+int initServerSocket(int argc, char **argv)
+{
+    if (argc < 3)
+    {
+        usageTerms(argc, argv);
     }
 
     struct sockaddr_storage storage;
 
-    if(server_sockaddr_init(argv[1], argv[2],&storage) != 0){
-        usageTerms(argc,argv);
+    if (server_sockaddr_init(argv[1], argv[2], &storage) != 0)
+    {
+        usageTerms(argc, argv);
     }
 
-
-
-    int mySocket;
-    mySocket = socket(storage.ss_family,SOCK_STREAM, 0);
-    if(mySocket == -1){
+    int serverSocket;
+    serverSocket = socket(storage.ss_family, SOCK_STREAM, 0);
+    if (serverSocket == -1)
+    {
         myError("socket error");
     }
 
     int enable = 1;
-    if(setsockopt(mySocket, SOL_SOCKET, SO_REUSEADDR,&enable,sizeof(int)) != 0){
+    if (setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) != 0)
+    {
         myError("setsockopt");
     }
 
     struct sockaddr *addr = (struct sockaddr *)(&storage);
 
-    if(bind(mySocket, addr, sizeof(storage)) != 0){
+    if (bind(serverSocket, addr, sizeof(storage)) != 0)
+    {
         myError("bind");
     }
 
-
-    if(listen(mySocket, 10) != 0){
+    if (listen(serverSocket, 10) != 0)
+    {
         myError("listen");
     }
-
     char addrstr[BUFFSIZE];
-    add2str(addr,addrstr, BUFFSIZE);
+
+    add2str(addr, addrstr, BUFFSIZE);
     printf("bound to %s, waiting connection\n", addrstr);
 
-    while(1){
+    return serverSocket;
+}
 
-        struct sockaddr_storage clientStorage;
-        struct sockaddr *clientAddr = (struct sockaddr *)&clientStorage;
+int initClientSocket(int serverSocket)
+{
+    struct sockaddr_storage clientStorage;
+    struct sockaddr *clientAddr = (struct sockaddr *)&clientStorage;
+    socklen_t clientAddrLen = sizeof(clientStorage);
+    int clientSocket = accept(serverSocket, clientAddr, &clientAddrLen);
 
-        socklen_t clientAddrLen = sizeof(clientStorage);
+    if (clientSocket == -1)
+    {
+        myError("accept");
+    }
+    char clientAddrStr[BUFFSIZE];
+    add2str(clientAddr, clientAddrStr, BUFFSIZE);
+    printf("[log] connection from %s\n", clientAddrStr);
+    return clientSocket;
+}
 
+int main(int argc, char **argv)
+{
 
-        int clientSocket = accept(mySocket, clientAddr, &clientAddrLen);
+    char *commands[2] = {"add", "list"};
 
-        if(clientSocket == -1){
-            myError("accept");
-        }
-        
-        char clientAddrStr[BUFFSIZE];
-        add2str(clientAddr,clientAddrStr, BUFFSIZE);
-        printf("[log] connection from %s\n", clientAddrStr);
+    int serverSocket = initServerSocket(argc, argv);
 
+    while (1)
+    {
+
+        int clientSocket = initClientSocket(serverSocket);
         char buf[BUFFSIZE];
-
-        size_t count = recv(clientSocket, buf,BUFFSIZE,0);
+        size_t count = recv(clientSocket, buf, BUFFSIZE, 0);
 
         /**
          * one recv call is not enough to get all data sent from send()
          * **/
         unsigned total = 0;
-        while(1){
-            printf("[msg] %s, %d bytes: %s", clientAddrStr, (int)count, buf);
-            
-            char *clientMessage = strtok(buf," ");
+        while (1)
+        {
+            printf("[msg] %d bytes: %s", (int)count, buf);
+
+            char *clientMessage = strtok(buf, " ");
             int index = 0;
             char *command;
             char *sensorsList[BUFFSIZE];
-            while(clientMessage){
-                // verify if first token is a valid command 
-                if(index == 0){
+            while (clientMessage)
+            {
+                // verify if first token is a valid command
+                if (index == 0)
+                {
                     int found = 0;
-                    for(int i=0;i<len(commands);i++){
+                    for (int i = 0; i < len(commands); i++)
+                    {
                         // equal
-                        if(strcmp(clientMessage,commands[i]) == 0){
+                        if (strcmp(clientMessage, commands[i]) == 0)
+                        {
                             printf("COMMAND DETECTED: %s\n", commands[i]);
                             command = commands[i];
                             found = 1;
                         }
                     }
-                    if(found == 0){
+                    if (found == 0)
+                    {
                         printf("TODO: HANDLE ERROR COMMAND NOT FOUND\n");
                         exit(EXIT_FAILURE);
                     }
+                }
+                else
+                { // other tokens
 
-                }else { // other tokens
-
-                    if(digits_only(clientMessage)){
+                    if (digits_only(clientMessage))
+                    {
                         /**
                          * find last element from array
-                        */
-                        int idx=0;
+                         */
+                        int idx = 0;
                         size_t arraySize = len(sensorsList);
-                        while(sensorsList[idx] != 0){
+                        while (sensorsList[idx] != 0)
+                        {
                             ++idx;
                         }
-                        if(idx < arraySize){
+                        if (idx < arraySize)
+                        {
                             sensorsList[idx] = clientMessage;
                         }
                         /**
                          * find last element from array
-                        */
-
+                         */
                     }
                 }
                 ++index;
-                clientMessage = strtok(NULL," "); // verify next token
+                clientMessage = strtok(NULL, " "); // verify next token
             }
 
             /**
              * print data
-            */
-                printf("COMMAND: %s\n",command);
-                for(int i=0;i<len(sensorsList);i++){
-                    if(sensorsList[i]){
-                        printf("SENSOR: %s\n", sensorsList[i]);
-                    }else{
-                        break;
-                    }
+             */
+            printf("COMMAND: %s\n", command);
+            for (int i = 0; i < len(sensorsList); i++)
+            {
+                if (sensorsList[i])
+                {
+                    printf("SENSOR: %s\n", sensorsList[i]);
                 }
-                printf("\n");
+                else
+                {
+                    break;
+                }
+            }
+            printf("\n");
             /**
              * print data
-            */
+             */
 
-            count = recv(clientSocket, buf + total, BUFFSIZE - total,0);
-            if(count == -1 || count == 0){
+            count = recv(clientSocket, buf + total, BUFFSIZE - total, 0);
+            if (count == -1 || count == 0)
+            {
                 break;
             }
             total += count;
 
-            printf("MESSAGE SENT: %s\n",buf);
-
+            printf("MESSAGE SENT: %s\n", buf);
         }
 
         printf("END OF LOOP");
 
-        memset(buf,0,BUFFSIZE);
+        memset(buf, 0, BUFFSIZE);
 
-        sprintf(buf,"remote endpoint: %.1000s\n", clientAddrStr);
-        count = send(clientSocket, buf, strlen(buf)+1,0);
-        if(count != strlen(buf)+1){
+        // sprintf(buf, "remote endpoint: %.1000s\n", clientAddrStr);
+        count = send(clientSocket, buf, strlen(buf) + 1, 0);
+        if (count != strlen(buf) + 1)
+        {
             myError("send");
         }
         close(clientSocket);
     }
-
-
 }

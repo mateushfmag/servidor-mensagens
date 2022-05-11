@@ -2,6 +2,8 @@
     "files.associations": {
         "socket.h": "c",
         "utils.h": "c",
-        "common.h": "c"
+        "common.h": "c",
+        "stdlib.h": "c",
+        "inet.h": "c"
     }
 }
