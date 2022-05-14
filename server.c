@@ -11,13 +11,25 @@
 typedef struct Query
 {
     char *command;
-    char *sensorsList[BUFFSIZE];
+    char *sensorIds[BUFFSIZE];
     char *targetEquipment;
 } Query;
 
+typedef struct SensorModel
+{
+    char *sensorId;
+    int sensorValue;
+} SensorModel;
+
+typedef struct EquipmentModel
+{
+    SensorModel sensorsList[BUFFSIZE];
+    char *equipmentId;
+} EquipmentModel;
+
 Query str2query(char *clientMessage)
 {
-    char *commands[2] = {"add", "list"};
+    char *commands[4] = {"add", "list", "remove", "read"};
     Query query;
     int index = 0;
     int isSensor = 1;
@@ -39,8 +51,7 @@ Query str2query(char *clientMessage)
             }
             if (found == 0)
             {
-                printf("TODO: HANDLE ERROR COMMAND NOT FOUND\n");
-                exit(EXIT_FAILURE);
+                myError("TODO: HANDLE ERROR COMMAND NOT FOUND\n");
             }
         }
         else // other tokens
@@ -59,14 +70,14 @@ Query str2query(char *clientMessage)
                      * find last element from array
                      */
                     int idx = 0;
-                    size_t arraySize = len(query.sensorsList);
-                    while (query.sensorsList[idx] != 0)
+                    size_t arraySize = len(query.sensorIds);
+                    while (query.sensorIds[idx] != 0)
                     {
                         ++idx;
                     }
                     if (idx < arraySize)
                     {
-                        query.sensorsList[idx] = clientMessage;
+                        query.sensorIds[idx] = clientMessage;
                     }
                     /**
                      * find last element from array
@@ -83,12 +94,12 @@ Query str2query(char *clientMessage)
     }
     printf("\n[QUERY RESULT]\n\nCommand: %s\nSensors List:", query.command);
 
-    for (int i = 0; i < len(query.sensorsList); i++)
+    for (int i = 0; i < len(query.sensorIds); i++)
     {
-        if (query.sensorsList[i])
+        if (query.sensorIds[i])
         {
 
-            printf(" %s", query.sensorsList[i]);
+            printf(" %s", query.sensorIds[i]);
         }
         else
         {
@@ -169,6 +180,86 @@ int initClientSocket(int serverSocket)
     return clientSocket;
 }
 
+FILE *getEquipmentsFile(char *mode)
+{
+    FILE *file;
+    file = fopen("equipments", mode);
+    if (file == NULL)
+    {
+        myError("Error to open file");
+    }
+    return file;
+}
+
+EquipmentModel EquipmentFactory(Query query)
+{
+    EquipmentModel equipment;
+    equipment.equipmentId = query.targetEquipment;
+
+    for (int i = 0; i < len(query.sensorIds); i++)
+    {
+        if (query.sensorIds[i])
+        {
+            equipment.sensorsList[i].sensorId = query.sensorIds[i];
+            equipment.sensorsList[i].sensorValue = 0;
+        }
+        else
+        {
+            break;
+        }
+    }
+    return equipment;
+}
+
+void addSensor(Query query)
+{
+
+    FILE *outFile = getEquipmentsFile("r");
+    FILE *inFile = getEquipmentsFile("w");
+    // EquipmentModel equipment = EquipmentFactory(query);
+
+    char buffer[BUFFSIZE];
+
+    while (fscanf(outFile, "%s", buffer) == 1)
+    {
+        printf("We just read %s\n", buffer);
+        fprintf(inFile, "%s", buffer);
+    }
+
+    // size_t result = fwrite(&equipment, sizeof(EquipmentModel), 1, file);
+    // if (result != 0)
+    // {
+    //     printf("Contents to file written successfully !\n");
+    // }
+    // else
+    // {
+    //     myError("Error to write file");
+    // }
+    fclose(inFile);
+    fclose(outFile);
+}
+
+void listSensors(Query query)
+{
+    FILE *file = getEquipmentsFile("r");
+    EquipmentModel equipment;
+    printf("before read: %s\n", equipment.equipmentId);
+
+    while (fread(&equipment, sizeof(EquipmentModel), 1, file))
+    {
+        printf("FIRST\n");
+        // if (query.targetEquipment == equipment.equipmentId)
+        // {
+        //     printf("EQUALS\n");
+        // }
+        printf("Data = %s\n", equipment.equipmentId);
+    }
+
+    printf("AFTER READING\n");
+
+    fclose(file);
+}
+
 int main(int argc, char **argv)
 {
 
@@ -180,7 +271,7 @@ int main(int argc, char **argv)
         int clientSocket = initClientSocket(serverSocket);
         char buf[BUFFSIZE];
         size_t count = recv(clientSocket, buf, BUFFSIZE, 0);
-
+        Query query;
         /**
          * one recv call is not enough to get all data sent from send()
          * **/
@@ -190,7 +281,33 @@ int main(int argc, char **argv)
             printf("[msg] %d bytes: %s", (int)count, buf);
 
             char *clientMessage = strtok(buf, " ");
-            Query query = str2query(clientMessage);
+            query = str2query(clientMessage);
+
+            printf("query.command=%s\n", query.command);
+
+            if (strcmp(query.command, "add") == 0)
+            {
+                printf("CALLING ADD SENSOR\n");
+                addSensor(query);
+            }
+            else if (strcmp(query.command, "list") == 0)
+            {
+                printf("list");
+                printf("CALLING LIST SENSOR\n");
+                listSensors(query);
+            }
+            else if (strcmp(query.command, "remove") == 0)
+            {
+                printf("remove");
+            }
+            else if (strcmp(query.command, "read") == 0)
+            {
+                printf("read");
+            }
+            else
+            {
+                myError("UNKNOWN COMMAND\n");
+            }
 
             count = recv(clientSocket, buf + total, BUFFSIZE - total, 0);
             if (count == -1 || count == 0)
