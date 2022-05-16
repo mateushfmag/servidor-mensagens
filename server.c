@@ -268,21 +268,32 @@ void addSensor(Query query)
     closeFile(file);
 }
 
-void listSensors(Query query)
+int *listSensors(Query query)
 {
     FILE *file = getFile("equipments", "r");
-    EquipmentModel equipment;
-    printf("before read: %s\n", equipment.equipmentId);
-
-    while (fread(&equipment, sizeof(EquipmentModel), 1, file))
+    char buffer[BUFFSIZE];
+    int *sensors;
+    sensors = malloc(sizeof(int) * 4);
+    while (fscanf(file, "%s", buffer) != EOF)
     {
-        printf("FIRST\n");
-        printf("Data = %s\n", equipment.equipmentId);
+        char binaryEquipmentId[3] = {buffer[0],
+                                     buffer[1], '\0'};
+        int equipmentId = (int)strtol(binaryEquipmentId, NULL, 2) + 1;
+
+        if (equipmentId == atoi(query.targetEquipment))
+        {
+            int beginOfSensorsIndex = 2;
+            for (int i = 0; i < 5; i++)
+            {
+                if (buffer[i + beginOfSensorsIndex] == '1')
+                {
+                    sensors[i] = 1;
+                }
+            }
+        }
     }
-
-    printf("AFTER READING\n");
-
-    fclose(file);
+    closeFile(file);
+    return sensors;
 }
 
 int main(int argc, char **argv)
@@ -317,8 +328,11 @@ int main(int argc, char **argv)
             }
             else if (strcmp(query.command, "list") == 0)
             {
-                printf("CALLING LIST SENSOR\n");
-                listSensors(query);
+                int *sensors = listSensors(query);
+                while (*sensors++)
+                {
+                    printf("%d\n", *sensors);
+                }
             }
             else if (strcmp(query.command, "remove") == 0)
             {

@@ -7,6 +7,6 @@ clean:
 	rm -rf client server client.o a.out server.o common.o
 
 run-server:
-	./server v4 51511
+	./server v4 51512
 run-client:
-	./client 127.0.0.1 51511
+	./client 127.0.0.1 51512
