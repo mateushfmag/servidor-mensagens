@@ -223,7 +223,6 @@ EquipmentModel EquipmentFactory(Query query)
 
 void addSensor(Query query)
 {
-    // 11_1111
     printf("adding sensor...\n");
     FILE *file = getFile("equipments", "r");
     FILE *temp = getFile("temp", "w");
@@ -296,21 +295,20 @@ int main(int argc, char **argv)
 
         int clientSocket = initClientSocket(serverSocket);
         char buf[BUFFSIZE];
-        size_t count = recv(clientSocket, buf, BUFFSIZE, 0);
-        Query query;
         /**
          * one recv call is not enough to get all data sent from send()
          * **/
-        unsigned total = 0;
-        while (1)
+        size_t count = 1;
+        while (count > 0)
         {
-            printf("[msg] %d bytes: %s", (int)count, buf);
-
+            memset(buf, 0, BUFFSIZE);
+            count = recv(clientSocket, buf, BUFFSIZE, 0);
+            if (count <= 0)
+            {
+                break;
+            }
             char *clientMessage = strtok(buf, " ");
-            printf("clientMessage: %s\n", clientMessage);
-            query = str2query(clientMessage);
-
-            printf("query.command=%s\n", query.command);
+            Query query = str2query(clientMessage);
 
             if (strcmp(query.command, "add") == 0)
             {
@@ -319,7 +317,6 @@ int main(int argc, char **argv)
             }
             else if (strcmp(query.command, "list") == 0)
             {
-                printf("list");
                 printf("CALLING LIST SENSOR\n");
                 listSensors(query);
             }
@@ -335,20 +332,10 @@ int main(int argc, char **argv)
             {
                 myError("UNKNOWN COMMAND\n");
             }
-
-            count = recv(clientSocket, buf + total, BUFFSIZE - total, 0);
-            if (count == -1 || count == 0)
-            {
-                break;
-            }
-            total += count;
-
-            printf("MESSAGE SENT: %s\n", buf);
         }
+        printf("[msg] %d bytes: %s", (int)count, buf);
 
         printf("END OF LOOP");
-
-        memset(buf, 0, BUFFSIZE);
 
         // sprintf(buf, "remote endpoint: %.1000s\n", clientAddrStr);
         count = send(clientSocket, buf, strlen(buf) + 1, 0);
