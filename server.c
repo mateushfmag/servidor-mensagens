@@ -31,6 +31,10 @@ Query str2query(char *clientMessage)
 {
     char *commands[4] = {"add", "list", "remove", "read"};
     Query query;
+    for (int i = 0; i < len(query.sensorIds); i++)
+    {
+        query.sensorIds[i] = 0;
+    }
     int index = 0;
     int isSensor = 1;
     while (clientMessage)
@@ -63,7 +67,6 @@ Query str2query(char *clientMessage)
 
             if (digits_only(clientMessage))
             {
-
                 if (isSensor)
                 {
                     /**
@@ -71,6 +74,7 @@ Query str2query(char *clientMessage)
                      */
                     int idx = 0;
                     size_t arraySize = len(query.sensorIds);
+                    printf("arraySize: %ld\n", arraySize);
                     while (query.sensorIds[idx] != 0)
                     {
                         ++idx;
@@ -78,6 +82,7 @@ Query str2query(char *clientMessage)
                     if (idx < arraySize)
                     {
                         query.sensorIds[idx] = clientMessage;
+                        printf("sensor added: %s\nindex:%d\n", clientMessage, idx);
                     }
                     /**
                      * find last element from array
@@ -302,6 +307,7 @@ int main(int argc, char **argv)
             printf("[msg] %d bytes: %s", (int)count, buf);
 
             char *clientMessage = strtok(buf, " ");
+            printf("clientMessage: %s\n", clientMessage);
             query = str2query(clientMessage);
 
             printf("query.command=%s\n", query.command);
