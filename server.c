@@ -180,15 +180,20 @@ int initClientSocket(int serverSocket)
     return clientSocket;
 }
 
-FILE *getEquipmentsFile(char *mode)
+FILE *getFile(char *fileName, char *mode)
 {
     FILE *file;
-    file = fopen("equipments", mode);
+    file = fopen(fileName, mode);
     if (file == NULL)
     {
         myError("Error to open file");
     }
     return file;
+}
+void closeFile(FILE *file)
+{
+    fflush(file);
+    fclose(file);
 }
 
 EquipmentModel EquipmentFactory(Query query)
@@ -213,45 +218,61 @@ EquipmentModel EquipmentFactory(Query query)
 
 void addSensor(Query query)
 {
-
-    FILE *outFile = getEquipmentsFile("r");
-    FILE *inFile = getEquipmentsFile("w");
-    // EquipmentModel equipment = EquipmentFactory(query);
-
+    // 11_1111
+    printf("adding sensor...\n");
+    FILE *file = getFile("equipments", "r");
+    FILE *temp = getFile("temp", "w");
     char buffer[BUFFSIZE];
 
-    while (fscanf(outFile, "%s", buffer) == 1)
+    while (fscanf(file, "%s", buffer) != EOF)
     {
-        printf("We just read %s\n", buffer);
-        fprintf(inFile, "%s", buffer);
+        char binaryEquipmentId[3] = {buffer[0],
+                                     buffer[1], '\0'};
+        int equipmentId = (int)strtol(binaryEquipmentId, NULL, 2) + 1;
+
+        if (equipmentId == atoi(query.targetEquipment))
+        {
+            int beginOfSensorsIndex = 1;
+            for (int i = 0; i < len(query.sensorIds); i++)
+            {
+                if (query.sensorIds[i])
+                {
+                    int sensorId = atoi(query.sensorIds[i]);
+                    buffer[beginOfSensorsIndex + sensorId] = '1';
+                }
+                else
+                {
+                    break;
+                }
+            }
+        }
+        fprintf(temp, "%s\n", buffer);
+    }
+    closeFile(temp);
+    closeFile(file);
+
+    temp = getFile("temp", "r");
+    file = getFile("equipments", "w");
+
+    while (fscanf(temp, "%s", buffer) != EOF)
+    {
+        fprintf(file, "%s\n", buffer);
     }
 
-    // size_t result = fwrite(&equipment, sizeof(EquipmentModel), 1, file);
-    // if (result != 0)
-    // {
-    //     printf("Contents to file written successfully !\n");
-    // }
-    // else
-    // {
-    //     myError("Error to write file");
-    // }
-    fclose(inFile);
-    fclose(outFile);
+    closeFile(temp);
+    remove("temp");
+    closeFile(file);
 }
 
 void listSensors(Query query)
 {
-    FILE *file = getEquipmentsFile("r");
+    FILE *file = getFile("equipments", "r");
     EquipmentModel equipment;
     printf("before read: %s\n", equipment.equipmentId);
 
     while (fread(&equipment, sizeof(EquipmentModel), 1, file))
     {
         printf("FIRST\n");
-        // if (query.targetEquipment == equipment.equipmentId)
-        // {
-        //     printf("EQUALS\n");
-        // }
         printf("Data = %s\n", equipment.equipmentId);
     }
 
