@@ -267,11 +267,30 @@ int *getSensorValue(Query query)
     return values;
 }
 
-void toggleSensor(Query query, char value)
+/**
+ * int[query.sensorIds.length]
+ * 0 = success
+ * 1 = ADD = already exists | REMOVE = does not exist
+ * */
+int *toggleSensor(Query query, char value)
 {
     FILE *file = getFile("equipments", "r");
     FILE *temp = getFile("temp", "w");
     char buffer[BUFFSIZE];
+
+    int sensorIdsTrueSize = 0;
+    for (int i = 0; i < len(query.sensorIds); i++)
+    {
+        if (query.sensorIds[i])
+        {
+            ++sensorIdsTrueSize;
+        }
+        else
+        {
+            break;
+        }
+    }
+    int *result = malloc(sizeof(int) * sensorIdsTrueSize);
 
     while (fscanf(file, "%s", buffer) != EOF)
     {
@@ -279,16 +298,20 @@ void toggleSensor(Query query, char value)
         if (isEquipmentEqual(buffer, query.targetEquipment))
         {
             int beginOfSensorsIndex = 1;
-            for (int i = 0; i < len(query.sensorIds); i++)
+            for (int i = 0; i < sensorIdsTrueSize; i++)
             {
                 if (query.sensorIds[i])
                 {
                     int sensorId = atoi(query.sensorIds[i]);
+                    if (buffer[beginOfSensorsIndex + sensorId] == value)
+                    {
+                        result[i] = 1;
+                    }
+                    else
+                    {
+                        result[i] = 0;
+                    }
                     buffer[beginOfSensorsIndex + sensorId] = value;
-                }
-                else
-                {
-                    break;
                 }
             }
         }
@@ -308,6 +331,7 @@ void toggleSensor(Query query, char value)
     closeFile(temp);
     remove("temp");
     closeFile(file);
+    return result;
 }
 
 int *listSensors(Query query)
@@ -366,7 +390,26 @@ int main(int argc, char **argv)
             if (strcmp(query.command, "add") == 0)
             {
                 printf("CALLING ADD SENSOR\n");
-                toggleSensor(query, '1');
+                int *result = toggleSensor(query, '1');
+                printf("FINISH\n");
+                char *feedback[BUFFSIZE] = "sensor ";
+                int index = 0;
+                while (*result++)
+                {
+                    if (*(result - 1) == 1)
+                    {
+                        *feedback = strcat(*feedback, query.sensorIds[index]);
+                        *feedback = strcat(*feedback, " already exists in ");
+                        *feedback = strcat(*feedback, query.targetEquipment);
+                    }
+                    ++index;
+                }
+                // feedback[strcspn(feedback, '\0')] = '\n';
+                count = send(clientSocket, *feedback, strlen(*feedback), 0);
+                if (count != strlen(buf) + 1)
+                {
+                    myError("send");
+                }
             }
             else if (strcmp(query.command, "list") == 0)
             {
@@ -396,8 +439,6 @@ int main(int argc, char **argv)
             }
         }
         printf("[msg] %d bytes: %s", (int)count, buf);
-
-        printf("END OF LOOP");
 
         // sprintf(buf, "remote endpoint: %.1000s\n", clientAddrStr);
         count = send(clientSocket, buf, strlen(buf) + 1, 0);
