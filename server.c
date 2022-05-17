@@ -221,20 +221,21 @@ EquipmentModel EquipmentFactory(Query query)
     return equipment;
 }
 
-void addSensor(Query query)
+int isEquipmentEqual(char *buffer, char *targetEquipment)
 {
-    printf("adding sensor...\n");
-    FILE *file = getFile("equipments", "r");
-    FILE *temp = getFile("temp", "w");
-    char buffer[BUFFSIZE];
+    char binaryEquipmentId[3] = {buffer[0], buffer[1], '\0'};
+    int equipmentId = (int)strtol(binaryEquipmentId, NULL, 2) + 1;
+    return equipmentId == atoi(targetEquipment);
+}
 
+int *getSensorValue(Query query)
+{
+    FILE *file = getFile("equipments", "r");
+    char buffer[BUFFSIZE];
+    int numberOfSensors = 0;
     while (fscanf(file, "%s", buffer) != EOF)
     {
-        char binaryEquipmentId[3] = {buffer[0],
-                                     buffer[1], '\0'};
-        int equipmentId = (int)strtol(binaryEquipmentId, NULL, 2) + 1;
-
-        if (equipmentId == atoi(query.targetEquipment))
+        if (isEquipmentEqual(buffer, query.targetEquipment))
         {
             int beginOfSensorsIndex = 1;
             for (int i = 0; i < len(query.sensorIds); i++)
@@ -242,7 +243,48 @@ void addSensor(Query query)
                 if (query.sensorIds[i])
                 {
                     int sensorId = atoi(query.sensorIds[i]);
-                    buffer[beginOfSensorsIndex + sensorId] = '1';
+                    if (buffer[beginOfSensorsIndex + sensorId] == '1')
+                    {
+                        ++numberOfSensors;
+                    }
+                }
+                else
+                {
+                    break;
+                }
+            }
+        }
+    }
+    int *values;
+    values = malloc(sizeof(int) * numberOfSensors);
+
+    for (int i = 0; i < numberOfSensors; i++)
+    {
+        values[i] = 5; // TODO: random number
+    }
+
+    closeFile(file);
+    return values;
+}
+
+void toggleSensor(Query query, char value)
+{
+    FILE *file = getFile("equipments", "r");
+    FILE *temp = getFile("temp", "w");
+    char buffer[BUFFSIZE];
+
+    while (fscanf(file, "%s", buffer) != EOF)
+    {
+
+        if (isEquipmentEqual(buffer, query.targetEquipment))
+        {
+            int beginOfSensorsIndex = 1;
+            for (int i = 0; i < len(query.sensorIds); i++)
+            {
+                if (query.sensorIds[i])
+                {
+                    int sensorId = atoi(query.sensorIds[i]);
+                    buffer[beginOfSensorsIndex + sensorId] = value;
                 }
                 else
                 {
@@ -324,23 +366,29 @@ int main(int argc, char **argv)
             if (strcmp(query.command, "add") == 0)
             {
                 printf("CALLING ADD SENSOR\n");
-                addSensor(query);
+                toggleSensor(query, '1');
             }
             else if (strcmp(query.command, "list") == 0)
             {
                 int *sensors = listSensors(query);
                 while (*sensors++)
                 {
-                    printf("%d\n", *sensors);
+                    printf("%d\n", *(sensors - 1));
                 }
             }
             else if (strcmp(query.command, "remove") == 0)
             {
-                printf("remove");
+                printf("CALLING REMOVE SENSOR\n");
+                toggleSensor(query, '0');
             }
             else if (strcmp(query.command, "read") == 0)
             {
-                printf("read");
+                printf("CALLING GET SENSOR VALUE\n");
+                int *values = getSensorValue(query);
+                while (*values++)
+                {
+                    printf("values: %d\n", *(values - 1));
+                }
             }
             else
             {
