@@ -54,7 +54,6 @@ int main(int argc, char **argv)
         memset(buf, 0, BUFFSIZE);
         printf("mensagem > ");
         fgets(buf, BUFFSIZE - 1, stdin);
-        printf("MENSAGEM RECEBIDA:%s", buf);
 
         size_t count = send(mySocket, buf, strlen(buf) + 1, 0);
         if (count != strlen(buf) + 1)
@@ -62,6 +61,12 @@ int main(int argc, char **argv)
             myError("communication error");
         }
         buf[strcspn(buf, "\r\n")] = '\0';
+
+        char buffer[BUFFSIZE];
+
+        memset(buffer, 0, BUFFSIZE);
+        recv(mySocket, buffer, BUFFSIZE, 0);
+        printf("resposta < %s", buffer);
     }
     close(mySocket);
     exit(EXIT_SUCCESS);

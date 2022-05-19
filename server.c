@@ -221,8 +221,8 @@ int *getSensorValue(Query query)
 
 /**
  * int[query.sensorIds.length]
- * 0 = success
- * 1 = ADD = already exists | REMOVE = does not exist
+ * 1 = success
+ * -1 = ADD = already exists | REMOVE = does not exist
  * */
 int *toggleSensor(Query query, char value)
 {
@@ -246,7 +246,6 @@ int *toggleSensor(Query query, char value)
 
     while (fscanf(file, "%s", buffer) != EOF)
     {
-
         if (isEquipmentEqual(buffer, query.targetEquipment))
         {
             int beginOfSensorsIndex = 1;
@@ -257,11 +256,11 @@ int *toggleSensor(Query query, char value)
                     int sensorId = atoi(query.sensorIds[i]);
                     if (buffer[beginOfSensorsIndex + sensorId] == value)
                     {
-                        result[i] = 1;
+                        result[i] = -1;
                     }
                     else
                     {
-                        result[i] = 0;
+                        result[i] = 1;
                     }
                     buffer[beginOfSensorsIndex + sensorId] = value;
                 }
@@ -327,7 +326,7 @@ CharArray addCommandFeedback(Query query, int *result)
     int alreadyExists = 0;
     for (int i = 0; i < resultLength; i++)
     {
-        if (result[i] == 1)
+        if (result[i] == -1)
         {
             alreadyExists = 1;
             break;
@@ -339,7 +338,7 @@ CharArray addCommandFeedback(Query query, int *result)
 
         for (int i = 0; i < resultLength; i++)
         {
-            if (result[i] == 1)
+            if (result[i] == -1)
             {
                 concatCharArray(&feedback, query.sensorIds[i]);
                 appendToCharArray(&feedback, ' ');
@@ -359,6 +358,7 @@ CharArray addCommandFeedback(Query query, int *result)
         }
         concatCharArray(&feedback, "added");
     }
+    appendToCharArray(&feedback, '\n');
     return feedback;
 }
 
@@ -391,11 +391,7 @@ int main(int argc, char **argv)
             {
                 printf("CALLING ADD SENSOR\n");
                 int *result = toggleSensor(query, '1');
-
                 CharArray feedback = addCommandFeedback(query, result);
-
-                printf("feedback: %s\n", feedback.array);
-                printf("size: %ld\n", feedback.size);
                 count = send(clientSocket, feedback.array, feedback.size, 0);
                 if (count != feedback.size)
                 {
