@@ -6,10 +6,83 @@
 #include <string.h>
 #include <ctype.h>
 
+void initIntArray(IntArray *a)
+{
+    size_t initialSize = 1;
+    a->array = malloc(initialSize * sizeof(int));
+    a->used = 0;
+    a->size = initialSize;
+}
+
+void appendToIntArray(IntArray *a, int element)
+{
+    if (a->used == a->size)
+    {
+        ++a->size;
+        a->array = realloc(a->array, a->size * sizeof(int));
+    }
+    a->array[a->used++] = element;
+}
+
+void concatIntArray(IntArray *a, int *elements)
+{
+    int index = 0;
+    while (*(elements + index))
+    {
+        appendToIntArray(a, elements[index]);
+        ++index;
+    }
+}
+
+void initCharArray(CharArray *a)
+{
+    size_t initialSize = 1;
+    a->array = malloc(initialSize * sizeof(char));
+    a->used = 0;
+    a->size = initialSize;
+}
+
+void appendToCharArray(CharArray *a, char element)
+{
+    if (a->used == a->size)
+    {
+        ++a->size;
+        a->array = realloc(a->array, a->size * sizeof(char));
+    }
+    a->array[a->used++] = element;
+}
+
+void concatCharArray(CharArray *a, char *elements)
+{
+    int index = 0;
+    while (*(elements + index))
+    {
+        appendToCharArray(a, elements[index]);
+        ++index;
+    }
+}
+
 void myError(const char *msg)
 {
     perror(msg);
     exit(EXIT_FAILURE);
+}
+
+FILE *getFile(char *fileName, char *mode)
+{
+    FILE *file;
+    file = fopen(fileName, mode);
+    if (file == NULL)
+    {
+        myError("Error to open file");
+    }
+    return file;
+}
+
+void closeFile(FILE *file)
+{
+    fflush(file);
+    fclose(file);
 }
 
 int digits_only(const char *s)

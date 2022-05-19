@@ -15,18 +15,6 @@ typedef struct Query
     char *targetEquipment;
 } Query;
 
-typedef struct SensorModel
-{
-    char *sensorId;
-    int sensorValue;
-} SensorModel;
-
-typedef struct EquipmentModel
-{
-    SensorModel sensorsList[BUFFSIZE];
-    char *equipmentId;
-} EquipmentModel;
-
 Query str2query(char *clientMessage)
 {
     char *commands[4] = {"add", "list", "remove", "read"};
@@ -185,42 +173,6 @@ int initClientSocket(int serverSocket)
     return clientSocket;
 }
 
-FILE *getFile(char *fileName, char *mode)
-{
-    FILE *file;
-    file = fopen(fileName, mode);
-    if (file == NULL)
-    {
-        myError("Error to open file");
-    }
-    return file;
-}
-void closeFile(FILE *file)
-{
-    fflush(file);
-    fclose(file);
-}
-
-EquipmentModel EquipmentFactory(Query query)
-{
-    EquipmentModel equipment;
-    equipment.equipmentId = query.targetEquipment;
-
-    for (int i = 0; i < len(query.sensorIds); i++)
-    {
-        if (query.sensorIds[i])
-        {
-            equipment.sensorsList[i].sensorId = query.sensorIds[i];
-            equipment.sensorsList[i].sensorValue = 0;
-        }
-        else
-        {
-            break;
-        }
-    }
-    return equipment;
-}
-
 int isEquipmentEqual(char *buffer, char *targetEquipment)
 {
     char binaryEquipmentId[3] = {buffer[0], buffer[1], '\0'};
@@ -362,44 +314,10 @@ int *listSensors(Query query)
     return sensors;
 }
 
-typedef struct
-{
-    char *array;
-    size_t used;
-    size_t size;
-} CharArray;
-
-void initCharArray(CharArray *a, size_t initialSize)
-{
-    a->array = malloc(initialSize * sizeof(char));
-    a->used = 0;
-    a->size = initialSize;
-}
-
-void appendToCharArray(CharArray *a, char element)
-{
-    if (a->used == a->size)
-    {
-        a->size += 2;
-        a->array = realloc(a->array, a->size * sizeof(char));
-    }
-    a->array[a->used++] = element;
-}
-
-void concatCharArray(CharArray *a, char *elements)
-{
-    int index = 0;
-    while (*(elements + index))
-    {
-        appendToCharArray(a, elements[index]);
-        ++index;
-    }
-}
-
 CharArray addCommandFeedback(Query query, int *result)
 {
     CharArray feedback;
-    initCharArray(&feedback, 8);
+    initCharArray(&feedback);
     concatCharArray(&feedback, "sensor ");
 
     int resultLength = 0;
