@@ -362,6 +362,88 @@ int *listSensors(Query query)
     return sensors;
 }
 
+typedef struct
+{
+    char *array;
+    size_t used;
+    size_t size;
+} CharArray;
+
+void initCharArray(CharArray *a, size_t initialSize)
+{
+    a->array = malloc(initialSize * sizeof(char));
+    a->used = 0;
+    a->size = initialSize;
+}
+
+void appendToCharArray(CharArray *a, char element)
+{
+    if (a->used == a->size)
+    {
+        a->size += 2;
+        a->array = realloc(a->array, a->size * sizeof(char));
+    }
+    a->array[a->used++] = element;
+}
+
+void concatCharArray(CharArray *a, char *elements)
+{
+    int index = 0;
+    while (*(elements + index))
+    {
+        appendToCharArray(a, elements[index]);
+        ++index;
+    }
+}
+
+CharArray addCommandFeedback(Query query, int *result)
+{
+    CharArray feedback;
+    initCharArray(&feedback, 8);
+    concatCharArray(&feedback, "sensor ");
+
+    int resultLength = 0;
+    while (*(result + resultLength))
+        ++resultLength;
+
+    int alreadyExists = 0;
+    for (int i = 0; i < resultLength; i++)
+    {
+        if (result[i] == 1)
+        {
+            alreadyExists = 1;
+            break;
+        }
+    }
+
+    if (alreadyExists)
+    {
+
+        for (int i = 0; i < resultLength; i++)
+        {
+            if (result[i] == 1)
+            {
+                concatCharArray(&feedback, query.sensorIds[i]);
+                appendToCharArray(&feedback, ' ');
+            }
+        }
+        concatCharArray(&feedback, "already exists in ");
+        concatCharArray(&feedback, query.targetEquipment);
+    }
+    else
+    {
+        printf("resultLength: %d\n", resultLength);
+        for (int i = 0; i < resultLength; i++)
+        {
+            printf("sensor ids: %s\n", query.sensorIds[i]);
+            concatCharArray(&feedback, query.sensorIds[i]);
+            appendToCharArray(&feedback, ' ');
+        }
+        concatCharArray(&feedback, "added");
+    }
+    return feedback;
+}
+
 int main(int argc, char **argv)
 {
 
@@ -391,22 +473,13 @@ int main(int argc, char **argv)
             {
                 printf("CALLING ADD SENSOR\n");
                 int *result = toggleSensor(query, '1');
-                printf("FINISH\n");
-                char *feedback[BUFFSIZE] = "sensor ";
-                int index = 0;
-                while (*result++)
-                {
-                    if (*(result - 1) == 1)
-                    {
-                        *feedback = strcat(*feedback, query.sensorIds[index]);
-                        *feedback = strcat(*feedback, " already exists in ");
-                        *feedback = strcat(*feedback, query.targetEquipment);
-                    }
-                    ++index;
-                }
-                // feedback[strcspn(feedback, '\0')] = '\n';
-                count = send(clientSocket, *feedback, strlen(*feedback), 0);
-                if (count != strlen(buf) + 1)
+
+                CharArray feedback = addCommandFeedback(query, result);
+
+                printf("feedback: %s\n", feedback.array);
+                printf("size: %ld\n", feedback.size);
+                count = send(clientSocket, feedback.array, feedback.size, 0);
+                if (count != feedback.size)
                 {
                     myError("send");
                 }
