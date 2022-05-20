@@ -9,6 +9,11 @@ compile:
 	gcc -Wall ./client.c ./common.o -o client
 	gcc -Wall ./server.c ./common.o -o server
 
+tst:
+	gcc -Wall -c ./common.c
+	gcc -Wall ./tst.c ./common.o -o tst
+	./tst
+
 run-server:
 	./server v4 51513
 

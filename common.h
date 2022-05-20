@@ -16,6 +16,13 @@ typedef struct
 
 typedef struct
 {
+    float *array;
+    size_t used;
+    size_t size;
+} FloatArray;
+
+typedef struct
+{
     int *array;
     size_t used;
     size_t size;
@@ -46,5 +53,15 @@ void initIntArray(IntArray *a);
 void appendToIntArray(IntArray *a, int element);
 
 void concatIntArray(IntArray *a, int *elements);
+
+void prependToIntArray(IntArray *a, int element);
+
+void initFloatArray(FloatArray *a);
+
+void appendToFloatArray(FloatArray *a, float element);
+
+void prependToFloatArray(FloatArray *a, float element);
+
+void concatFloatArray(FloatArray *a, float *elements);
 
 #endif

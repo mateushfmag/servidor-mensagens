@@ -6,6 +6,63 @@
 #include <string.h>
 #include <ctype.h>
 
+void initFloatArray(FloatArray *a)
+{
+    size_t initialSize = 1;
+    a->array = malloc(initialSize * sizeof(float));
+    a->used = 0;
+    a->size = initialSize;
+}
+
+void appendToFloatArray(FloatArray *a, float element)
+{
+    if (a->used == a->size)
+    {
+        ++a->size;
+        a->array = realloc(a->array, a->size * sizeof(float));
+    }
+    a->array[a->used++] = element;
+}
+
+void prependToFloatArray(FloatArray *a, float element)
+{
+    if (a->used == a->size)
+    {
+        ++a->size;
+        a->array = realloc(a->array, a->size * sizeof(float));
+    }
+    float *temp = malloc(a->size * sizeof(float));
+
+    for (int i = 0; i < a->size; i++)
+    {
+        temp[i] = a->array[i];
+    }
+
+    for (int i = 0; i < a->size; i++)
+    {
+        if (i == 0)
+        {
+            a->array[i] = element;
+        }
+        else
+        {
+            a->array[i] = temp[i - 1];
+        }
+    }
+    free(temp);
+    a->used++;
+}
+
+void concatFloatArray(FloatArray *a, float *elements)
+{
+    int index = 0;
+    while (*(elements + index))
+    {
+        appendToFloatArray(a, elements[index]);
+        ++index;
+    }
+}
+
 void initIntArray(IntArray *a)
 {
     size_t initialSize = 1;
@@ -22,6 +79,35 @@ void appendToIntArray(IntArray *a, int element)
         a->array = realloc(a->array, a->size * sizeof(int));
     }
     a->array[a->used++] = element;
+}
+
+void prependToIntArray(IntArray *a, int element)
+{
+    if (a->used == a->size)
+    {
+        ++a->size;
+        a->array = realloc(a->array, a->size * sizeof(int));
+    }
+    int *temp = malloc(a->size * sizeof(int));
+
+    for (int i = 0; i < a->size; i++)
+    {
+        temp[i] = a->array[i];
+    }
+
+    for (int i = 0; i < a->size; i++)
+    {
+        if (i == 0)
+        {
+            a->array[i] = element;
+        }
+        else
+        {
+            a->array[i] = temp[i - 1];
+        }
+    }
+    free(temp);
+    a->used++;
 }
 
 void concatIntArray(IntArray *a, int *elements)

@@ -180,24 +180,36 @@ int isEquipmentEqual(char *buffer, char *targetEquipment)
     return equipmentId == atoi(targetEquipment);
 }
 
-int *getSensorValue(Query query)
+/**
+ * result[0] == 0 -> no errors, result[1,n] -> values
+ * result[0] == 1 -> has errors, result[1,n] -> not installed sensors
+ */
+FloatArray getSensorValue(Query query)
 {
     FILE *file = getFile("equipments", "r");
     char buffer[BUFFSIZE];
-    int numberOfSensors = 0;
+    FloatArray sensors;
+    initFloatArray(&sensors);
+    FloatArray notInstalledSensors;
+    initFloatArray(&notInstalledSensors);
+
     while (fscanf(file, "%s", buffer) != EOF)
     {
         if (isEquipmentEqual(buffer, query.targetEquipment))
         {
-            int beginOfSensorsIndex = 1;
+            int beginOfSensorsIndex = 2;
             for (int i = 0; i < len(query.sensorIds); i++)
             {
                 if (query.sensorIds[i])
                 {
                     int sensorId = atoi(query.sensorIds[i]);
-                    if (buffer[beginOfSensorsIndex + sensorId] == '1')
+                    if (buffer[beginOfSensorsIndex + (sensorId - 1)] == '1')
                     {
-                        ++numberOfSensors;
+                        appendToFloatArray(&sensors, 5.5); // TODO: random number
+                    }
+                    else
+                    {
+                        appendToFloatArray(&notInstalledSensors, sensorId);
                     }
                 }
                 else
@@ -207,16 +219,19 @@ int *getSensorValue(Query query)
             }
         }
     }
-    int *values;
-    values = malloc(sizeof(int) * numberOfSensors);
-
-    for (int i = 0; i < numberOfSensors; i++)
-    {
-        values[i] = 5; // TODO: random number
-    }
 
     closeFile(file);
-    return values;
+
+    if (notInstalledSensors.used == 0)
+    {
+        prependToFloatArray(&sensors, 0);
+        return sensors;
+    }
+    else
+    {
+        prependToFloatArray(&notInstalledSensors, 1);
+        return notInstalledSensors;
+    }
 }
 
 /**
@@ -433,6 +448,37 @@ CharArray removeCommandFeedback(Query query, IntArray result)
     return feedback;
 }
 
+CharArray readCommandFeedback(Query query, FloatArray result)
+{
+
+    CharArray feedback;
+    initCharArray(&feedback);
+    if (result.array[0] == 0.0)
+    { // no errors
+        char buffer[5];
+        for (int i = 1; i < result.size; i++)
+        {
+            memset(buffer, 0, 5);
+            gcvt(result.array[i], 4, buffer);
+            concatCharArray(&feedback, buffer);
+            concatCharArray(&feedback, buffer);
+        }
+        appendToCharArray(&feedback, '\n');
+    }
+    else
+    { // has errors
+        concatCharArray(&feedback, "sensors(s) ");
+        for (int i = 1; i < result.size; i++)
+        {
+            appendToCharArray(&feedback, '0');
+            appendToCharArray(&feedback, '0' + result.array[i]);
+            appendToCharArray(&feedback, ' ');
+        }
+        concatCharArray(&feedback, "not installed\n");
+    }
+    return feedback;
+}
+
 int main(int argc, char **argv)
 {
 
@@ -466,6 +512,7 @@ int main(int argc, char **argv)
             }
             else if (strcmp(query.command, "list") == 0)
             {
+                printf("CALLING LIST SENSOR\n");
                 IntArray sensors = listSensors(query);
                 feedback = listCommandFeedback(query, sensors);
             }
@@ -478,10 +525,11 @@ int main(int argc, char **argv)
             else if (strcmp(query.command, "read") == 0)
             {
                 printf("CALLING GET SENSOR VALUE\n");
-                int *values = getSensorValue(query);
-                while (*values++)
+                FloatArray sensors = getSensorValue(query);
+                feedback = readCommandFeedback(query, sensors);
+                for (int i = 0; i < sensors.size; i++)
                 {
-                    printf("values: %d\n", *(values - 1));
+                    printf("value: %f\n", sensors.array[i]);
                 }
             }
             else
