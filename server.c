@@ -285,12 +285,12 @@ int *toggleSensor(Query query, char value)
     return result;
 }
 
-int *listSensors(Query query)
+IntArray listSensors(Query query)
 {
     FILE *file = getFile("equipments", "r");
     char buffer[BUFFSIZE];
-    int *sensors;
-    sensors = malloc(sizeof(int) * 4);
+    IntArray sensors;
+    initIntArray(&sensors);
     while (fscanf(file, "%s", buffer) != EOF)
     {
         char binaryEquipmentId[3] = {buffer[0],
@@ -300,11 +300,15 @@ int *listSensors(Query query)
         if (equipmentId == atoi(query.targetEquipment))
         {
             int beginOfSensorsIndex = 2;
-            for (int i = 0; i < 5; i++)
+            for (int i = 0; i < 4; i++)
             {
                 if (buffer[i + beginOfSensorsIndex] == '1')
                 {
-                    sensors[i] = 1;
+                    appendToIntArray(&sensors, 1);
+                }
+                else
+                {
+                    appendToIntArray(&sensors, 0);
                 }
             }
         }
@@ -362,6 +366,33 @@ CharArray addCommandFeedback(Query query, int *result)
     return feedback;
 }
 
+CharArray listCommandFeedback(Query query, IntArray sensors)
+{
+    CharArray feedback;
+    initCharArray(&feedback);
+    int operations = 0;
+    for (int i = 0; i < sensors.size; i++)
+    {
+        if (sensors.array[i] == 1)
+        {
+            appendToCharArray(&feedback, '0');
+            appendToCharArray(&feedback, (i + 1) + '0');
+            appendToCharArray(&feedback, ' ');
+            operations += 3;
+        }
+    }
+    printf("operations:%d\n", operations);
+    if (operations == 0)
+    {
+        concatCharArray(&feedback, "no sensors found\n");
+    }
+    else
+    {
+        feedback.array[operations - 1] = '\n';
+    }
+    return feedback;
+}
+
 int main(int argc, char **argv)
 {
 
@@ -386,25 +417,17 @@ int main(int argc, char **argv)
             }
             char *clientMessage = strtok(buf, " ");
             Query query = str2query(clientMessage);
-
+            CharArray feedback;
             if (strcmp(query.command, "add") == 0)
             {
                 printf("CALLING ADD SENSOR\n");
                 int *result = toggleSensor(query, '1');
-                CharArray feedback = addCommandFeedback(query, result);
-                count = send(clientSocket, feedback.array, feedback.size, 0);
-                if (count != feedback.size)
-                {
-                    myError("send");
-                }
+                feedback = addCommandFeedback(query, result);
             }
             else if (strcmp(query.command, "list") == 0)
             {
-                int *sensors = listSensors(query);
-                while (*sensors++)
-                {
-                    printf("%d\n", *(sensors - 1));
-                }
+                IntArray sensors = listSensors(query);
+                feedback = listCommandFeedback(query, sensors);
             }
             else if (strcmp(query.command, "remove") == 0)
             {
@@ -423,6 +446,11 @@ int main(int argc, char **argv)
             else
             {
                 myError("UNKNOWN COMMAND\n");
+            }
+            count = send(clientSocket, feedback.array, feedback.size, 0);
+            if (count != feedback.size)
+            {
+                myError("send");
             }
         }
         printf("[msg] %d bytes: %s", (int)count, buf);
