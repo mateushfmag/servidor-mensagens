@@ -62,7 +62,6 @@ Query str2query(char *clientMessage)
                      */
                     int idx = 0;
                     size_t arraySize = len(query.sensorIds);
-                    printf("arraySize: %ld\n", arraySize);
                     while (query.sensorIds[idx] != 0)
                     {
                         ++idx;
@@ -70,7 +69,6 @@ Query str2query(char *clientMessage)
                     if (idx < arraySize)
                     {
                         query.sensorIds[idx] = clientMessage;
-                        printf("sensor added: %s\nindex:%d\n", clientMessage, idx);
                     }
                     /**
                      * find last element from array
@@ -455,15 +453,15 @@ CharArray readCommandFeedback(Query query, FloatArray result)
     initCharArray(&feedback);
     if (result.array[0] == 0.0)
     { // no errors
-        char buffer[5];
+        char buffer[320];
         for (int i = 1; i < result.size; i++)
         {
-            memset(buffer, 0, 5);
-            gcvt(result.array[i], 4, buffer);
+            memset(buffer, 0, 320);
+            sprintf(buffer, "%.2f", result.array[i]);
             concatCharArray(&feedback, buffer);
-            concatCharArray(&feedback, buffer);
+            appendToCharArray(&feedback, ' ');
         }
-        appendToCharArray(&feedback, '\n');
+        feedback.array[feedback.size - 1] = '\n';
     }
     else
     { // has errors
@@ -527,10 +525,6 @@ int main(int argc, char **argv)
                 printf("CALLING GET SENSOR VALUE\n");
                 FloatArray sensors = getSensorValue(query);
                 feedback = readCommandFeedback(query, sensors);
-                for (int i = 0; i < sensors.size; i++)
-                {
-                    printf("value: %f\n", sensors.array[i]);
-                }
             }
             else
             {
