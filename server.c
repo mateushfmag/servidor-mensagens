@@ -378,7 +378,7 @@ CharArray listCommandFeedback(Query query, IntArray sensors)
             operations += 3;
         }
     }
-    printf("operations:%d\n", operations);
+
     if (operations == 0)
     {
         concatCharArray(&feedback, "no sensors found\n");
@@ -387,6 +387,49 @@ CharArray listCommandFeedback(Query query, IntArray sensors)
     {
         feedback.array[operations - 1] = '\n';
     }
+    return feedback;
+}
+
+CharArray removeCommandFeedback(Query query, IntArray result)
+{
+    CharArray feedback;
+    initCharArray(&feedback);
+    concatCharArray(&feedback, "sensor ");
+
+    int doesNotExist = 0;
+    for (int i = 0; i < result.size; i++)
+    {
+        if (result.array[i] == -1)
+        {
+            doesNotExist = 1;
+            break;
+        }
+    }
+
+    if (doesNotExist)
+    {
+        for (int i = 0; i < result.size; i++)
+        {
+            if (result.array[i] == -1)
+            {
+                concatCharArray(&feedback, query.sensorIds[i]);
+                appendToCharArray(&feedback, ' ');
+            }
+        }
+        concatCharArray(&feedback, "does not exist in ");
+        concatCharArray(&feedback, query.targetEquipment);
+    }
+    else
+    {
+        for (int i = 0; i < result.size; i++)
+        {
+            printf("sensor ids: %s\n", query.sensorIds[i]);
+            concatCharArray(&feedback, query.sensorIds[i]);
+            appendToCharArray(&feedback, ' ');
+        }
+        concatCharArray(&feedback, "removed");
+    }
+    appendToCharArray(&feedback, '\n');
     return feedback;
 }
 
@@ -429,7 +472,8 @@ int main(int argc, char **argv)
             else if (strcmp(query.command, "remove") == 0)
             {
                 printf("CALLING REMOVE SENSOR\n");
-                toggleSensor(query, '0');
+                IntArray sensors = toggleSensor(query, '0');
+                feedback = removeCommandFeedback(query, sensors);
             }
             else if (strcmp(query.command, "read") == 0)
             {
