@@ -224,11 +224,13 @@ int *getSensorValue(Query query)
  * 1 = success
  * -1 = ADD = already exists | REMOVE = does not exist
  * */
-int *toggleSensor(Query query, char value)
+IntArray toggleSensor(Query query, char value)
 {
     FILE *file = getFile("equipments", "r");
     FILE *temp = getFile("temp", "w");
     char buffer[BUFFSIZE];
+    IntArray sensors;
+    initIntArray(&sensors);
 
     int sensorIdsTrueSize = 0;
     for (int i = 0; i < len(query.sensorIds); i++)
@@ -242,7 +244,6 @@ int *toggleSensor(Query query, char value)
             break;
         }
     }
-    int *result = malloc(sizeof(int) * sensorIdsTrueSize);
 
     while (fscanf(file, "%s", buffer) != EOF)
     {
@@ -256,11 +257,11 @@ int *toggleSensor(Query query, char value)
                     int sensorId = atoi(query.sensorIds[i]);
                     if (buffer[beginOfSensorsIndex + sensorId] == value)
                     {
-                        result[i] = -1;
+                        appendToIntArray(&sensors, -1);
                     }
                     else
                     {
-                        result[i] = 1;
+                        appendToIntArray(&sensors, 1);
                     }
                     buffer[beginOfSensorsIndex + sensorId] = value;
                 }
@@ -282,7 +283,7 @@ int *toggleSensor(Query query, char value)
     closeFile(temp);
     remove("temp");
     closeFile(file);
-    return result;
+    return sensors;
 }
 
 IntArray listSensors(Query query)
@@ -317,20 +318,16 @@ IntArray listSensors(Query query)
     return sensors;
 }
 
-CharArray addCommandFeedback(Query query, int *result)
+CharArray addCommandFeedback(Query query, IntArray result)
 {
     CharArray feedback;
     initCharArray(&feedback);
     concatCharArray(&feedback, "sensor ");
 
-    int resultLength = 0;
-    while (*(result + resultLength))
-        ++resultLength;
-
     int alreadyExists = 0;
-    for (int i = 0; i < resultLength; i++)
+    for (int i = 0; i < result.size; i++)
     {
-        if (result[i] == -1)
+        if (result.array[i] == -1)
         {
             alreadyExists = 1;
             break;
@@ -340,9 +337,9 @@ CharArray addCommandFeedback(Query query, int *result)
     if (alreadyExists)
     {
 
-        for (int i = 0; i < resultLength; i++)
+        for (int i = 0; i < result.size; i++)
         {
-            if (result[i] == -1)
+            if (result.array[i] == -1)
             {
                 concatCharArray(&feedback, query.sensorIds[i]);
                 appendToCharArray(&feedback, ' ');
@@ -353,8 +350,8 @@ CharArray addCommandFeedback(Query query, int *result)
     }
     else
     {
-        printf("resultLength: %d\n", resultLength);
-        for (int i = 0; i < resultLength; i++)
+        printf("resultLength: %ld\n", result.size);
+        for (int i = 0; i < result.size; i++)
         {
             printf("sensor ids: %s\n", query.sensorIds[i]);
             concatCharArray(&feedback, query.sensorIds[i]);
@@ -421,8 +418,8 @@ int main(int argc, char **argv)
             if (strcmp(query.command, "add") == 0)
             {
                 printf("CALLING ADD SENSOR\n");
-                int *result = toggleSensor(query, '1');
-                feedback = addCommandFeedback(query, result);
+                IntArray sensors = toggleSensor(query, '1');
+                feedback = addCommandFeedback(query, sensors);
             }
             else if (strcmp(query.command, "list") == 0)
             {
