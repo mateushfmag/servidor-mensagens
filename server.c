@@ -21,6 +21,7 @@ Query str2query(char *clientMessage)
 {
     char *commands[4] = {"add", "list", "remove", "read"};
     Query query;
+    int validCommand = 1;
     for (int i = 0; i < len(query.sensorIds); i++)
     {
         query.sensorIds[i] = 0;
@@ -45,7 +46,9 @@ Query str2query(char *clientMessage)
             }
             if (found == 0)
             {
-                myError("TODO: HANDLE ERROR COMMAND NOT FOUND\n");
+                validCommand = 0;
+                break;
+                // myError("TODO: HANDLE ERROR COMMAND NOT FOUND\n");
             }
         }
         else // other tokens
@@ -85,21 +88,25 @@ Query str2query(char *clientMessage)
         ++index;
         clientMessage = strtok(NULL, " "); // verify next token
     }
-    printf("\n[QUERY RESULT]\n\nCommand: %s\nSensors List:", query.command);
 
-    for (int i = 0; i < len(query.sensorIds); i++)
+    if (validCommand)
     {
-        if (query.sensorIds[i])
-        {
+        printf("\n[QUERY RESULT]\n\nCommand: %s\nSensors List:", query.command);
 
-            printf(" %s", query.sensorIds[i]);
-        }
-        else
+        for (int i = 0; i < len(query.sensorIds); i++)
         {
-            break;
+            if (query.sensorIds[i])
+            {
+
+                printf(" %s", query.sensorIds[i]);
+            }
+            else
+            {
+                break;
+            }
         }
+        printf("\nTarget Equipment: %s\n\n", query.targetEquipment);
     }
-    printf("\nTarget Equipment: %s\n\n", query.targetEquipment);
     return query;
 }
 
@@ -540,15 +547,16 @@ int main(int argc, char **argv)
                 break;
             }
             char *clientMessage = strtok(buf, " ");
+            Query query = str2query(clientMessage);
 
-            if (strncmp(clientMessage, "kill", 4) == 0)
+            // if (strncmp(clientMessage, "kill", 4) == 0)
+            if (!query.command)
             {
                 stop = 1;
-                mySuccess("KILL COMMAND\n", clientSocket);
+                mySuccess("INVALID COMMAND\n", clientSocket);
                 break;
             }
 
-            Query query = str2query(clientMessage);
             CharArray feedback;
             if (strcmp(query.command, "add") == 0)
             {
