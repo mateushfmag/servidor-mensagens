@@ -282,12 +282,11 @@ IntArray toggleSensor(Query query, char value)
     /* create sensors array from file */
     while (fscanf(file, "%s", buffer) != EOF)
     {
-
         if (isEquipmentEqual(buffer, query.targetEquipment))
         {
             for (int i = 0; i < sensorIdsTrueSize; i++)
             {
-                if (query.sensorIds[i] && amountOfSensors < 15)
+                if (query.sensorIds[i] && (amountOfSensors < 15 || value == '0'))
                 {
                     ++amountOfSensors;
                     int sensorIndex = atoi(query.sensorIds[i]) - 1;
@@ -304,8 +303,8 @@ IntArray toggleSensor(Query query, char value)
                 }
             }
         }
-
         fprintf(temp, "%s\n", buffer);
+        printf("amountOfSensors: %d\n", amountOfSensors);
     }
     closeFile(temp);
     closeFile(file);
@@ -325,7 +324,7 @@ IntArray toggleSensor(Query query, char value)
     /* wirte sensors to file */
 
     // check errors
-    if (value == '1' && (amountOfSensors + sensorIdsTrueSize) >= MAX_SENSORS)
+    if (value == '1' && amountOfSensors >= MAX_SENSORS)
     {
         prependToIntArray(&sensors, -2);
     }
