@@ -8,8 +8,8 @@ compile:
 	gcc -Wall ./client.c ./common.o -o client
 	gcc -Wall ./server.c ./common.o -o server
 
-run-server:
+run-serverv4:
 	./server v4 51511
 
-run-client:
+run-clientv4:
 	./client 127.0.0.1 51511

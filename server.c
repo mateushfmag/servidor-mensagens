@@ -260,28 +260,29 @@ IntArray toggleSensor(Query query, char value)
 
     for (int i = 0; i < len(query.sensorIds); i++)
     {
-        int compare[] = {
-            strcmp(query.sensorIds[i], "01"),
-            strcmp(query.sensorIds[i], "02"),
-            strcmp(query.sensorIds[i], "03"),
-            strcmp(query.sensorIds[i], "04"),
-        };
-        for (int j = 0; j < len(compare); j++)
-        {
-            if (compare[i] != 0)
-            {
-                areSensorsValid = 0;
-                break;
-            }
-        }
-
-        if (areSensorsValid == 0)
-        {
-            break;
-        }
-
         if (query.sensorIds[i])
         {
+
+            int compare[] = {
+                strcmp(query.sensorIds[i], "01"),
+                strcmp(query.sensorIds[i], "02"),
+                strcmp(query.sensorIds[i], "03"),
+                strcmp(query.sensorIds[i], "04"),
+            };
+            for (int j = 0; j < len(compare); j++)
+            {
+                if (compare[i] != 0)
+                {
+                    areSensorsValid = 0;
+                    break;
+                }
+            }
+
+            if (areSensorsValid == 0)
+            {
+                break;
+            }
+
             ++sensorIdsTrueSize;
         }
         else
@@ -299,6 +300,7 @@ IntArray toggleSensor(Query query, char value)
     FILE *file = getFile("equipments", "r");
     FILE *temp = getFile("temp", "w");
     char buffer[BUFFSIZE];
+
     /* gets amountOfSensors */
     while (fscanf(file, "%s", buffer) != EOF)
     {
@@ -340,7 +342,6 @@ IntArray toggleSensor(Query query, char value)
             }
         }
         fprintf(temp, "%s\n", buffer);
-        printf("amountOfSensors: %d\n", amountOfSensors);
     }
     closeFile(temp);
     closeFile(file);
