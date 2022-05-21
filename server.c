@@ -82,7 +82,15 @@ Query str2query(char *clientMessage)
                 }
                 else
                 { // is equipment
-                    query.targetEquipment = clientMessage;
+                    int equipmentId = atoi(clientMessage);
+                    if (equipmentId > 0 && equipmentId < 5)
+                    {
+                        query.targetEquipment = clientMessage;
+                    }
+                    else
+                    {
+                        query.targetEquipment = "-1";
+                    }
                 }
             }
         }
@@ -599,7 +607,12 @@ int main(int argc, char **argv)
             }
 
             CharArray feedback;
-            if (strcmp(query.command, "add") == 0)
+
+            if (strcmp(query.targetEquipment, "-1") == 0)
+            {
+                concatCharArray(&feedback, "invalid equipment\n");
+            }
+            else if (strcmp(query.command, "add") == 0)
             {
                 printf("CALLING ADD SENSOR\n");
                 IntArray sensors = toggleSensor(query, '1');
