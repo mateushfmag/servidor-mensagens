@@ -253,7 +253,7 @@ IntArray toggleSensor(Query query, char value)
     IntArray sensors;
     initIntArray(&sensors);
 
-    int areSensorsValid = 1;
+    int areSensorsValid = 0;
     int amountOfSensors = 0;
     int sensorIdsTrueSize = 0;
     int beginOfSensorsIndex = 2;
@@ -262,7 +262,6 @@ IntArray toggleSensor(Query query, char value)
     {
         if (query.sensorIds[i])
         {
-
             int compare[] = {
                 strcmp(query.sensorIds[i], "01"),
                 strcmp(query.sensorIds[i], "02"),
@@ -271,9 +270,9 @@ IntArray toggleSensor(Query query, char value)
             };
             for (int j = 0; j < len(compare); j++)
             {
-                if (compare[i] != 0)
+                if (compare[j] == 0)
                 {
-                    areSensorsValid = 0;
+                    areSensorsValid = 1;
                     break;
                 }
             }
@@ -447,7 +446,6 @@ CharArray addCommandFeedback(Query query, IntArray result)
         printf("resultLength: %ld\n", result.size);
         for (int i = 0; i < result.size; i++)
         {
-            printf("sensor ids: %s\n", query.sensorIds[i]);
             concatCharArray(&feedback, query.sensorIds[i]);
             appendToCharArray(&feedback, ' ');
         }

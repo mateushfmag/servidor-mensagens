@@ -13,3 +13,9 @@ run-serverv4:
 
 run-clientv4:
 	./client 127.0.0.1 51511
+
+run-serverv6:
+	./server v6 51511
+
+run-clientv6:
+	./client ::1 51511
