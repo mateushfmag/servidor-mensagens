@@ -263,6 +263,7 @@ IntArray toggleSensor(Query query, char value)
         }
     }
 
+    /* gets amountOfSensors */
     while (fscanf(file, "%s", buffer) != EOF)
     {
         for (int i = 0; i < NUMBER_OF_SENSORS; i++)
@@ -273,11 +274,12 @@ IntArray toggleSensor(Query query, char value)
             }
         }
     }
-
     closeFile(file);
     file = getFile("equipments", "r");
     memset(buffer, 0, BUFFSIZE);
+    /* gets amountOfSensors */
 
+    /* create sensors array from file */
     while (fscanf(file, "%s", buffer) != EOF)
     {
 
@@ -307,20 +309,26 @@ IntArray toggleSensor(Query query, char value)
     }
     closeFile(temp);
     closeFile(file);
+    /* create sensors array from file */
 
     temp = getFile("temp", "r");
     file = getFile("equipments", "w");
 
+    /* wirte sensors to file */
     while (fscanf(temp, "%s", buffer) != EOF)
     {
         fprintf(file, "%s\n", buffer);
     }
-
     closeFile(temp);
     remove("temp");
     closeFile(file);
+    /* wirte sensors to file */
+
+    // check errors
     if (value == '1' && (amountOfSensors + sensorIdsTrueSize) >= MAX_SENSORS)
+    {
         prependToIntArray(&sensors, -2);
+    }
     return sensors;
 }
 
