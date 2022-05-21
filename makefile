@@ -1,6 +1,5 @@
 all:
 	make compile
-	make run-server
 clean:
 	rm -rf client server client.o a.out server.o common.o
 
@@ -9,13 +8,8 @@ compile:
 	gcc -Wall ./client.c ./common.o -o client
 	gcc -Wall ./server.c ./common.o -o server
 
-tst:
-	gcc -Wall -c ./common.c
-	gcc -Wall ./tst.c ./common.o -o tst
-	./tst
-
 run-server:
-	./server v4 51513
+	./server v4 51511
 
 run-client:
-	./client 127.0.0.1 51513
+	./client 127.0.0.1 51511
