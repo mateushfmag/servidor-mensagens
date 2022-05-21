@@ -246,20 +246,40 @@ FloatArray getSensorValue(Query query)
  * 1 = success
  * -1 = ADD = already exists | REMOVE = does not exist
  * -2 = ADD = limit exceeded
+ * -3 = invalid sensor
  * */
 IntArray toggleSensor(Query query, char value)
 {
-    FILE *file = getFile("equipments", "r");
-    FILE *temp = getFile("temp", "w");
-    char buffer[BUFFSIZE];
     IntArray sensors;
     initIntArray(&sensors);
 
+    int areSensorsValid = 1;
     int amountOfSensors = 0;
     int sensorIdsTrueSize = 0;
     int beginOfSensorsIndex = 2;
+
     for (int i = 0; i < len(query.sensorIds); i++)
     {
+        int compare[] = {
+            strcmp(query.sensorIds[i], "01"),
+            strcmp(query.sensorIds[i], "02"),
+            strcmp(query.sensorIds[i], "03"),
+            strcmp(query.sensorIds[i], "04"),
+        };
+        for (int j = 0; j < len(compare); j++)
+        {
+            if (compare[i] != 0)
+            {
+                areSensorsValid = 0;
+                break;
+            }
+        }
+
+        if (areSensorsValid == 0)
+        {
+            break;
+        }
+
         if (query.sensorIds[i])
         {
             ++sensorIdsTrueSize;
@@ -270,6 +290,15 @@ IntArray toggleSensor(Query query, char value)
         }
     }
 
+    if (areSensorsValid == 0)
+    {
+        appendToIntArray(&sensors, -3);
+        return sensors;
+    }
+
+    FILE *file = getFile("equipments", "r");
+    FILE *temp = getFile("temp", "w");
+    char buffer[BUFFSIZE];
     /* gets amountOfSensors */
     while (fscanf(file, "%s", buffer) != EOF)
     {
@@ -380,6 +409,11 @@ CharArray addCommandFeedback(Query query, IntArray result)
         concatCharArray(&feedback, "limit exceeded\n");
         return feedback;
     }
+    else if (result.array[0] == -3)
+    {
+        concatCharArray(&feedback, "invalid sensor\n");
+        return feedback;
+    }
 
     concatCharArray(&feedback, "sensor ");
 
@@ -453,6 +487,11 @@ CharArray removeCommandFeedback(Query query, IntArray result)
 {
     CharArray feedback;
     initCharArray(&feedback);
+    if (result.array[0] == -3)
+    {
+        concatCharArray(&feedback, "invalid sensor\n");
+        return feedback;
+    }
     concatCharArray(&feedback, "sensor ");
 
     int doesNotExist = 0;
