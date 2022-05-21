@@ -7,6 +7,8 @@
 #include <unistd.h>
 
 #define BUFFSIZE 1024
+#define NUMBER_OF_SENSORS 4
+#define MAX_SENSORS 15
 
 typedef struct Query
 {
@@ -236,6 +238,7 @@ FloatArray getSensorValue(Query query)
  * int[query.sensorIds.length]
  * 1 = success
  * -1 = ADD = already exists | REMOVE = does not exist
+ * -2 = ADD = limit exceeded
  * */
 IntArray toggleSensor(Query query, char value)
 {
@@ -245,7 +248,9 @@ IntArray toggleSensor(Query query, char value)
     IntArray sensors;
     initIntArray(&sensors);
 
+    int amountOfSensors = 0;
     int sensorIdsTrueSize = 0;
+    int beginOfSensorsIndex = 2;
     for (int i = 0; i < len(query.sensorIds); i++)
     {
         if (query.sensorIds[i])
@@ -260,15 +265,32 @@ IntArray toggleSensor(Query query, char value)
 
     while (fscanf(file, "%s", buffer) != EOF)
     {
+        for (int i = 0; i < NUMBER_OF_SENSORS; i++)
+        {
+            if (buffer[beginOfSensorsIndex + i] == '1')
+            {
+                ++amountOfSensors;
+            }
+        }
+    }
+
+    closeFile(file);
+    file = getFile("equipments", "r");
+    memset(buffer, 0, BUFFSIZE);
+
+    while (fscanf(file, "%s", buffer) != EOF)
+    {
+
         if (isEquipmentEqual(buffer, query.targetEquipment))
         {
-            int beginOfSensorsIndex = 1;
             for (int i = 0; i < sensorIdsTrueSize; i++)
             {
-                if (query.sensorIds[i])
+                if (query.sensorIds[i] && amountOfSensors < 15)
                 {
-                    int sensorId = atoi(query.sensorIds[i]);
-                    if (buffer[beginOfSensorsIndex + sensorId] == value)
+                    ++amountOfSensors;
+                    int sensorIndex = atoi(query.sensorIds[i]) - 1;
+
+                    if (buffer[beginOfSensorsIndex + sensorIndex] == value)
                     {
                         appendToIntArray(&sensors, -1);
                     }
@@ -276,10 +298,11 @@ IntArray toggleSensor(Query query, char value)
                     {
                         appendToIntArray(&sensors, 1);
                     }
-                    buffer[beginOfSensorsIndex + sensorId] = value;
+                    buffer[beginOfSensorsIndex + sensorIndex] = value;
                 }
             }
         }
+
         fprintf(temp, "%s\n", buffer);
     }
     closeFile(temp);
@@ -296,6 +319,8 @@ IntArray toggleSensor(Query query, char value)
     closeFile(temp);
     remove("temp");
     closeFile(file);
+    if (value == '1' && (amountOfSensors + sensorIdsTrueSize) >= MAX_SENSORS)
+        prependToIntArray(&sensors, -2);
     return sensors;
 }
 
@@ -335,6 +360,13 @@ CharArray addCommandFeedback(Query query, IntArray result)
 {
     CharArray feedback;
     initCharArray(&feedback);
+
+    if (result.array[0] == -2)
+    {
+        concatCharArray(&feedback, "limit exceeded\n");
+        return feedback;
+    }
+
     concatCharArray(&feedback, "sensor ");
 
     int alreadyExists = 0;
