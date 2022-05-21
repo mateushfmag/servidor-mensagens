@@ -433,7 +433,7 @@ CharArray listCommandFeedback(Query query, IntArray sensors)
 
     if (operations == 0)
     {
-        concatCharArray(&feedback, "no sensors found\n");
+        concatCharArray(&feedback, "none\n");
     }
     else
     {
