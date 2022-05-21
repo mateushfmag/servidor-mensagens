@@ -1,10 +1,4 @@
 #include "common.h"
-#include <inttypes.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <arpa/inet.h>
-#include <string.h>
-#include <ctype.h>
 
 void initFloatArray(FloatArray *a)
 {
@@ -146,6 +140,13 @@ void concatCharArray(CharArray *a, char *elements)
         appendToCharArray(a, elements[index]);
         ++index;
     }
+}
+
+void mySuccess(const char *msg, int socket)
+{
+    close(socket);
+    printf("%s", msg);
+    // exit(EXIT_SUCCESS);
 }
 
 void myError(const char *msg)

@@ -526,6 +526,7 @@ int main(int argc, char **argv)
 
         int clientSocket = initClientSocket(serverSocket);
         char buf[BUFFSIZE];
+        int stop = 0;
         /**
          * one recv call is not enough to get all data sent from send()
          * **/
@@ -539,6 +540,14 @@ int main(int argc, char **argv)
                 break;
             }
             char *clientMessage = strtok(buf, " ");
+
+            if (strncmp(clientMessage, "kill", 4) == 0)
+            {
+                stop = 1;
+                mySuccess("KILL COMMAND\n", clientSocket);
+                break;
+            }
+
             Query query = str2query(clientMessage);
             CharArray feedback;
             if (strcmp(query.command, "add") == 0)
@@ -577,12 +586,15 @@ int main(int argc, char **argv)
         }
         printf("[msg] %d bytes: %s", (int)count, buf);
 
-        // sprintf(buf, "remote endpoint: %.1000s\n", clientAddrStr);
-        count = send(clientSocket, buf, strlen(buf) + 1, 0);
-        if (count != strlen(buf) + 1)
+        if (!stop)
         {
-            myError("send");
+            // sprintf(buf, "remote endpoint: %.1000s\n", clientAddrStr);
+            count = send(clientSocket, buf, strlen(buf) + 1, 0);
+            if (count != strlen(buf) + 1)
+            {
+                myError("send");
+            }
+            close(clientSocket);
         }
-        close(clientSocket);
     }
 }

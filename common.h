@@ -1,9 +1,15 @@
 #pragma once
 #ifndef UTILS_H
 #define UTILS_H
+#include <inttypes.h>
+#include <ctype.h>
+#include <arpa/inet.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <arpa/inet.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <unistd.h>
 
 #define len(a) (sizeof(a) / sizeof(a[0]))
 
@@ -63,5 +69,7 @@ void appendToFloatArray(FloatArray *a, float element);
 void prependToFloatArray(FloatArray *a, float element);
 
 void concatFloatArray(FloatArray *a, float *elements);
+
+void mySuccess(const char *msg, int socket);
 
 #endif
