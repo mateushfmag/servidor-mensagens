@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <time.h>
 
 #define BUFFSIZE 1024
 #define NUMBER_OF_SENSORS 4
@@ -212,7 +213,9 @@ FloatArray getSensorValue(Query query)
                     int sensorId = atoi(query.sensorIds[i]);
                     if (buffer[beginOfSensorsIndex + (sensorId - 1)] == '1')
                     {
-                        appendToFloatArray(&sensors, 5.5); // TODO: random number
+                        float random = (rand() % 1000) + 1;
+                        float sensorValue = random / 100;
+                        appendToFloatArray(&sensors, sensorValue); // TODO: random number
                     }
                     else
                     {
@@ -563,7 +566,7 @@ CharArray readCommandFeedback(Query query, FloatArray result)
 
 int main(int argc, char **argv)
 {
-
+    srand(time(0));
     int serverSocket = initServerSocket(argc, argv);
 
     while (1)
