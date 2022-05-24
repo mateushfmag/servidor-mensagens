@@ -200,15 +200,10 @@ void clearEquipmentsFile()
 {
     FILE *file = getFile("equipments", "w");
 
-    fprintf(file, "%s\n", "000101");
-    fprintf(file, "%s\n", "011111");
-    fprintf(file, "%s\n", "101111");
-    fprintf(file, "%s\n", "111111");
-
-    // fprintf(file, "%s\n", "000000");
-    // fprintf(file, "%s\n", "010000");
-    // fprintf(file, "%s\n", "100000");
-    // fprintf(file, "%s\n", "110000");
+    fprintf(file, "%s\n", "000000");
+    fprintf(file, "%s\n", "010000");
+    fprintf(file, "%s\n", "100000");
+    fprintf(file, "%s\n", "110000");
 
     closeFile(file);
 }
