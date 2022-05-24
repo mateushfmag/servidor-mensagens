@@ -196,11 +196,27 @@ int isEquipmentEqual(char *buffer, char *targetEquipment)
     return equipmentId == atoi(targetEquipment);
 }
 
+void clearEquipmentsFile()
+{
+    FILE *file = getFile("equipments", "w");
+
+    fprintf(file, "%s\n", "000101");
+    fprintf(file, "%s\n", "011111");
+    fprintf(file, "%s\n", "101111");
+    fprintf(file, "%s\n", "111111");
+
+    // fprintf(file, "%s\n", "000000");
+    // fprintf(file, "%s\n", "010000");
+    // fprintf(file, "%s\n", "100000");
+    // fprintf(file, "%s\n", "110000");
+
+    closeFile(file);
+}
+
 /**
- * result[0] == 0 -> no errors, result[1,n] -> values
- * result[0] == 1 -> has errors, result[1,n] -> not installed sensors
+ * FloatArray[sensors, notInstalledSensors]
  */
-FloatArray getSensorValue(Query query)
+FloatArray *getSensorValue(Query query)
 {
     FILE *file = getFile("equipments", "r");
     char buffer[BUFFSIZE];
@@ -223,7 +239,7 @@ FloatArray getSensorValue(Query query)
                     {
                         float random = (rand() % 1000) + 1;
                         float sensorValue = random / 100;
-                        appendToFloatArray(&sensors, sensorValue); // TODO: random number
+                        appendToFloatArray(&sensors, sensorValue);
                     }
                     else
                     {
@@ -239,17 +255,10 @@ FloatArray getSensorValue(Query query)
     }
 
     closeFile(file);
-
-    if (notInstalledSensors.used == 0)
-    {
-        prependToFloatArray(&sensors, 0);
-        return sensors;
-    }
-    else
-    {
-        prependToFloatArray(&notInstalledSensors, 1);
-        return notInstalledSensors;
-    }
+    FloatArray *result = malloc(sizeof(sensors) + sizeof(notInstalledSensors));
+    result[0] = sensors;
+    result[1] = notInstalledSensors;
+    return result;
 }
 
 /**
@@ -334,20 +343,23 @@ IntArray toggleSensor(Query query, char value)
         {
             for (int i = 0; i < sensorIdsTrueSize; i++)
             {
-                if (query.sensorIds[i] && (amountOfSensors < 15 || value == '0'))
+                if (query.sensorIds[i])
                 {
-                    ++amountOfSensors;
-                    int sensorIndex = atoi(query.sensorIds[i]) - 1;
+                    if (amountOfSensors < MAX_SENSORS || value == '0')
+                    {
+                        int sensorIndex = atoi(query.sensorIds[i]) - 1;
 
-                    if (buffer[beginOfSensorsIndex + sensorIndex] == value)
-                    {
-                        appendToIntArray(&sensors, -1);
+                        if (buffer[beginOfSensorsIndex + sensorIndex] == value)
+                        {
+                            appendToIntArray(&sensors, -1);
+                        }
+                        else
+                        {
+                            appendToIntArray(&sensors, 1);
+                        }
+                        buffer[beginOfSensorsIndex + sensorIndex] = value;
                     }
-                    else
-                    {
-                        appendToIntArray(&sensors, 1);
-                    }
-                    buffer[beginOfSensorsIndex + sensorIndex] = value;
+                    ++amountOfSensors;
                 }
             }
         }
@@ -371,7 +383,7 @@ IntArray toggleSensor(Query query, char value)
     /* wirte sensors to file */
 
     // check errors
-    if (value == '1' && amountOfSensors >= MAX_SENSORS)
+    if (value == '1' && amountOfSensors > MAX_SENSORS)
     {
         prependToIntArray(&sensors, -2);
     }
@@ -554,40 +566,50 @@ CharArray removeCommandFeedback(Query query, IntArray result)
     return feedback;
 }
 
-CharArray readCommandFeedback(Query query, FloatArray result)
+CharArray readCommandFeedback(Query query, FloatArray *result)
 {
 
     CharArray feedback;
     initCharArray(&feedback);
-    if (result.array[0] == 0.0)
-    { // no errors
+
+    FloatArray sensors = result[0];
+    FloatArray notInstalledSensors = result[1];
+
+    if (sensors.used)
+    {
         char buffer[320];
-        for (int i = 1; i < result.size; i++)
+        for (int i = 0; i < sensors.size; i++)
         {
             memset(buffer, 0, 320);
-            sprintf(buffer, "%.2f", result.array[i]);
+            sprintf(buffer, "%.2f", sensors.array[i]);
             concatCharArray(&feedback, buffer);
             appendToCharArray(&feedback, ' ');
         }
-        feedback.array[feedback.size - 1] = '\n';
     }
-    else
-    { // has errors
-        concatCharArray(&feedback, "sensors(s) ");
-        for (int i = 1; i < result.size; i++)
+
+    if (notInstalledSensors.used)
+    {
+        if (sensors.used)
+        {
+            concatCharArray(&feedback, "and ");
+        }
+
+        for (int i = 0; i < notInstalledSensors.size; i++)
         {
             appendToCharArray(&feedback, '0');
-            appendToCharArray(&feedback, '0' + result.array[i]);
+            appendToCharArray(&feedback, '0' + notInstalledSensors.array[i]);
             appendToCharArray(&feedback, ' ');
         }
-        concatCharArray(&feedback, "not installed\n");
+        concatCharArray(&feedback, "not installed ");
     }
+    feedback.array[feedback.size - 1] = '\n';
     return feedback;
 }
 
 int main(int argc, char **argv)
 {
     srand(time(0));
+    clearEquipmentsFile();
     int serverSocket = initServerSocket(argc, argv);
 
     while (1)
@@ -646,8 +668,8 @@ int main(int argc, char **argv)
             else if (strcmp(query.command, "read") == 0)
             {
                 printf("CALLING GET SENSOR VALUE\n");
-                FloatArray sensors = getSensorValue(query);
-                feedback = readCommandFeedback(query, sensors);
+                FloatArray *result = getSensorValue(query);
+                feedback = readCommandFeedback(query, result);
             }
             else
             {
