@@ -426,41 +426,47 @@ CharArray addCommandFeedback(Query query, IntArray result)
         return feedback;
     }
 
-    concatCharArray(&feedback, "sensor ");
+    concatCharArray(&feedback, "sensor");
 
     int alreadyExists = 0;
+    int added = 0;
+    for (int i = 0; i < result.size; i++)
+    {
+
+        if (result.array[i] != -1)
+        {
+            appendToCharArray(&feedback, ' ');
+            concatCharArray(&feedback, query.sensorIds[i]);
+            if (added == 0)
+            {
+
+                added = 1;
+            }
+        }
+    }
+
+    if (added)
+    {
+        concatCharArray(&feedback, " added");
+    }
+
     for (int i = 0; i < result.size; i++)
     {
         if (result.array[i] == -1)
         {
-            alreadyExists = 1;
-            break;
+            appendToCharArray(&feedback, ' ');
+            concatCharArray(&feedback, query.sensorIds[i]);
+            if (alreadyExists == 0)
+            {
+                alreadyExists = 1;
+            }
         }
     }
 
     if (alreadyExists)
     {
-
-        for (int i = 0; i < result.size; i++)
-        {
-            if (result.array[i] == -1)
-            {
-                concatCharArray(&feedback, query.sensorIds[i]);
-                appendToCharArray(&feedback, ' ');
-            }
-        }
-        concatCharArray(&feedback, "already exists in ");
+        concatCharArray(&feedback, " already exists in ");
         concatCharArray(&feedback, query.targetEquipment);
-    }
-    else
-    {
-        printf("resultLength: %ld\n", result.size);
-        for (int i = 0; i < result.size; i++)
-        {
-            concatCharArray(&feedback, query.sensorIds[i]);
-            appendToCharArray(&feedback, ' ');
-        }
-        concatCharArray(&feedback, "added");
     }
     appendToCharArray(&feedback, '\n');
     return feedback;
