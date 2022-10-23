@@ -1,94 +1,692 @@
-#include "utils.h"
+#include "common.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <time.h>
 
 #define BUFFSIZE 1024
+#define NUMBER_OF_SENSORS 4
+#define MAX_SENSORS 15
 
+typedef struct Query
+{
+    char *command;
+    char *sensorIds[BUFFSIZE];
+    char *targetEquipment;
+} Query;
 
+Query str2query(char *clientMessage)
+{
+    char *commands[4] = {"add", "list", "remove", "read"};
+    Query query;
+    int validCommand = 1;
+    for (int i = 0; i < len(query.sensorIds); i++)
+    {
+        query.sensorIds[i] = 0;
+    }
+    int index = 0;
+    int isSensor = 1;
+    while (clientMessage)
+    {
+        clientMessage[strcspn(clientMessage, "\n")] = 0;
+        // verify if first token is a valid command
+        if (index == 0)
+        {
+            int found = 0;
+            for (int i = 0; i < len(commands); i++)
+            {
+                // equal
+                if (strcmp(clientMessage, commands[i]) == 0)
+                {
+                    query.command = commands[i];
+                    found = 1;
+                }
+            }
+            if (found == 0)
+            {
+                validCommand = 0;
+                break;
+                // myError("TODO: HANDLE ERROR COMMAND NOT FOUND\n");
+            }
+        }
+        else // other tokens
+        {
+            if (strcmp(clientMessage, "in") == 0 || strcmp(clientMessage, "at") == 0 || strcmp(clientMessage, "on") == 0)
+            {
+                isSensor = 0;
+            }
 
-void usageTerms(int argc, char **argv){
+            if (digits_only(clientMessage))
+            {
+                if (isSensor)
+                {
+                    /**
+                     * find last element from array
+                     */
+                    int idx = 0;
+                    size_t arraySize = len(query.sensorIds);
+                    while (query.sensorIds[idx] != 0)
+                    {
+                        ++idx;
+                    }
+                    if (idx < arraySize)
+                    {
+                        query.sensorIds[idx] = clientMessage;
+                    }
+                    /**
+                     * find last element from array
+                     */
+                }
+                else
+                { // is equipment
+                    int equipmentId = atoi(clientMessage);
+                    if (equipmentId > 0 && equipmentId < 5)
+                    {
+                        query.targetEquipment = clientMessage;
+                    }
+                    else
+                    {
+                        query.targetEquipment = "-1";
+                    }
+                }
+            }
+        }
+        ++index;
+        clientMessage = strtok(NULL, " "); // verify next token
+    }
+
+    if (validCommand)
+    {
+        printf("\n[QUERY RESULT]\n\nCommand: %s\nSensors List:", query.command);
+
+        for (int i = 0; i < len(query.sensorIds); i++)
+        {
+            if (query.sensorIds[i])
+            {
+
+                printf(" %s", query.sensorIds[i]);
+            }
+            else
+            {
+                break;
+            }
+        }
+        printf("\nTarget Equipment: %s\n\n", query.targetEquipment);
+    }
+    return query;
+}
+
+void usageTerms(int argc, char **argv)
+{
     printf("usage: %s <v4|v6> <server_port>\n", argv[0]);
     printf("example: %s v4 51511\n", argv[0]);
     exit(EXIT_FAILURE);
 }
 
-
-int main(int argc, char **argv){
-    if(argc < 3){
-        usageTerms(argc,argv);
+int initServerSocket(int argc, char **argv)
+{
+    if (argc < 3)
+    {
+        usageTerms(argc, argv);
     }
-
-
 
     struct sockaddr_storage storage;
 
-    if(server_sockaddr_init(argv[1], argv[2],&storage) != 0){
-        usageTerms(argc,argv);
+    if (server_sockaddr_init(argv[1], argv[2], &storage) != 0)
+    {
+        usageTerms(argc, argv);
     }
 
-
-
-    int mySocket;
-    mySocket = socket(storage.ss_family,SOCK_STREAM, 0);
-    if(mySocket == -1){
+    int serverSocket;
+    serverSocket = socket(storage.ss_family, SOCK_STREAM, 0);
+    if (serverSocket == -1)
+    {
         myError("socket error");
     }
 
     int enable = 1;
-    if(setsockopt(mySocket, SOL_SOCKET, SO_REUSEADDR,&enable,sizeof(int)) != 0){
+    if (setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) != 0)
+    {
         myError("setsockopt");
     }
 
     struct sockaddr *addr = (struct sockaddr *)(&storage);
 
-    if(bind(mySocket, addr, sizeof(storage)) != 0){
+    if (bind(serverSocket, addr, sizeof(storage)) != 0)
+    {
         myError("bind");
     }
 
-
-    if(listen(mySocket, 10) != 0){
+    if (listen(serverSocket, 10) != 0)
+    {
         myError("listen");
     }
-
     char addrstr[BUFFSIZE];
-    add2str(addr,addrstr, BUFFSIZE);
+
+    add2str(addr, addrstr, BUFFSIZE);
     printf("bound to %s, waiting connection\n", addrstr);
 
-    while(1){
+    return serverSocket;
+}
 
-        struct sockaddr_storage clientStorage;
-        struct sockaddr *clientAddr = (struct sockaddr *)&clientStorage;
+int initClientSocket(int serverSocket)
+{
+    struct sockaddr_storage clientStorage;
+    struct sockaddr *clientAddr = (struct sockaddr *)&clientStorage;
+    socklen_t clientAddrLen = sizeof(clientStorage);
+    int clientSocket = accept(serverSocket, clientAddr, &clientAddrLen);
 
-        socklen_t clientAddrLen = sizeof(clientStorage);
+    if (clientSocket == -1)
+    {
+        myError("accept");
+    }
+    char clientAddrStr[BUFFSIZE];
+    add2str(clientAddr, clientAddrStr, BUFFSIZE);
+    printf("[log] connection from %s\n", clientAddrStr);
+    return clientSocket;
+}
 
+int isEquipmentEqual(char *buffer, char *targetEquipment)
+{
+    char binaryEquipmentId[3] = {buffer[0], buffer[1], '\0'};
+    int equipmentId = (int)strtol(binaryEquipmentId, NULL, 2) + 1;
+    return equipmentId == atoi(targetEquipment);
+}
 
-        int clientSocket = accept(mySocket, clientAddr, &clientAddrLen);
+void clearEquipmentsFile()
+{
+    FILE *file = getFile("equipments", "w");
 
-        if(clientSocket == -1){
-            myError("accept");
+    fprintf(file, "%s\n", "000000");
+    fprintf(file, "%s\n", "010000");
+    fprintf(file, "%s\n", "100000");
+    fprintf(file, "%s\n", "110000");
+
+    closeFile(file);
+}
+
+/**
+ * FloatArray[sensors, notInstalledSensors]
+ */
+FloatArray *getSensorValue(Query query)
+{
+    FILE *file = getFile("equipments", "r");
+    char buffer[BUFFSIZE];
+    FloatArray sensors;
+    initFloatArray(&sensors);
+    FloatArray notInstalledSensors;
+    initFloatArray(&notInstalledSensors);
+
+    while (fscanf(file, "%s", buffer) != EOF)
+    {
+        if (isEquipmentEqual(buffer, query.targetEquipment))
+        {
+            int beginOfSensorsIndex = 2;
+            for (int i = 0; i < len(query.sensorIds); i++)
+            {
+                if (query.sensorIds[i])
+                {
+                    int sensorId = atoi(query.sensorIds[i]);
+                    if (buffer[beginOfSensorsIndex + (sensorId - 1)] == '1')
+                    {
+                        float random = (rand() % 1000) + 1;
+                        float sensorValue = random / 100;
+                        appendToFloatArray(&sensors, sensorValue);
+                    }
+                    else
+                    {
+                        appendToFloatArray(&notInstalledSensors, sensorId);
+                    }
+                }
+                else
+                {
+                    break;
+                }
+            }
         }
-        
-        char clientAddrStr[BUFFSIZE];
-        add2str(clientAddr,clientAddrStr, BUFFSIZE);
-        printf("[log] connection from %s\n", clientAddrStr);
-
-        char buf[BUFFSIZE];
-        size_t count = recv(clientSocket, buf,BUFFSIZE,0);
-        memset(buf,0,BUFFSIZE);
-        printf("[msg] %s, %d bytes: %s\n", clientAddrStr, (int)count, buf);
-
-        sprintf(buf,"remote endpoint: %.1000s\n", clientAddrStr);
-        count = send(clientSocket, buf, strlen(buf)+1,0);
-        if(count != strlen(buf)+1){
-            myError("send");
-        }
-        close(clientSocket);
-
     }
 
+    closeFile(file);
+    FloatArray *result = malloc(sizeof(sensors) + sizeof(notInstalledSensors));
+    result[0] = sensors;
+    result[1] = notInstalledSensors;
+    return result;
+}
 
+/**
+ * int[query.sensorIds.length]
+ * 1 = success
+ * -1 = ADD = already exists | REMOVE = does not exist
+ * -2 = ADD = limit exceeded
+ * -3 = invalid sensor
+ * */
+IntArray toggleSensor(Query query, char value)
+{
+    IntArray sensors;
+    initIntArray(&sensors);
+
+    int areSensorsValid = 0;
+    int amountOfSensors = 0;
+    int sensorIdsTrueSize = 0;
+    int beginOfSensorsIndex = 2;
+
+    for (int i = 0; i < len(query.sensorIds); i++)
+    {
+        if (query.sensorIds[i])
+        {
+            int compare[] = {
+                strcmp(query.sensorIds[i], "01"),
+                strcmp(query.sensorIds[i], "02"),
+                strcmp(query.sensorIds[i], "03"),
+                strcmp(query.sensorIds[i], "04"),
+            };
+            for (int j = 0; j < len(compare); j++)
+            {
+                if (compare[j] == 0)
+                {
+                    areSensorsValid = 1;
+                    break;
+                }
+            }
+
+            if (areSensorsValid == 0)
+            {
+                break;
+            }
+
+            ++sensorIdsTrueSize;
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    if (areSensorsValid == 0)
+    {
+        appendToIntArray(&sensors, -3);
+        return sensors;
+    }
+
+    FILE *file = getFile("equipments", "r");
+    FILE *temp = getFile("temp", "w");
+    char buffer[BUFFSIZE];
+
+    /* gets amountOfSensors */
+    while (fscanf(file, "%s", buffer) != EOF)
+    {
+        for (int i = 0; i < NUMBER_OF_SENSORS; i++)
+        {
+            if (buffer[beginOfSensorsIndex + i] == '1')
+            {
+                ++amountOfSensors;
+            }
+        }
+    }
+    closeFile(file);
+    file = getFile("equipments", "r");
+    memset(buffer, 0, BUFFSIZE);
+    /* gets amountOfSensors */
+
+    /* create sensors array from file */
+    while (fscanf(file, "%s", buffer) != EOF)
+    {
+        if (isEquipmentEqual(buffer, query.targetEquipment))
+        {
+            for (int i = 0; i < sensorIdsTrueSize; i++)
+            {
+                if (query.sensorIds[i])
+                {
+                    if (amountOfSensors < MAX_SENSORS || value == '0')
+                    {
+                        int sensorIndex = atoi(query.sensorIds[i]) - 1;
+
+                        if (buffer[beginOfSensorsIndex + sensorIndex] == value)
+                        {
+                            appendToIntArray(&sensors, -1);
+                        }
+                        else
+                        {
+                            appendToIntArray(&sensors, 1);
+                        }
+                        buffer[beginOfSensorsIndex + sensorIndex] = value;
+                    }
+                    ++amountOfSensors;
+                }
+            }
+        }
+        fprintf(temp, "%s\n", buffer);
+    }
+    closeFile(temp);
+    closeFile(file);
+    /* create sensors array from file */
+
+    temp = getFile("temp", "r");
+    file = getFile("equipments", "w");
+
+    /* wirte sensors to file */
+    while (fscanf(temp, "%s", buffer) != EOF)
+    {
+        fprintf(file, "%s\n", buffer);
+    }
+    closeFile(temp);
+    remove("temp");
+    closeFile(file);
+    /* wirte sensors to file */
+
+    // check errors
+    if (value == '1' && amountOfSensors > MAX_SENSORS)
+    {
+        prependToIntArray(&sensors, -2);
+    }
+    return sensors;
+}
+
+IntArray listSensors(Query query)
+{
+    FILE *file = getFile("equipments", "r");
+    char buffer[BUFFSIZE];
+    IntArray sensors;
+    initIntArray(&sensors);
+    while (fscanf(file, "%s", buffer) != EOF)
+    {
+        char binaryEquipmentId[3] = {buffer[0],
+                                     buffer[1], '\0'};
+        int equipmentId = (int)strtol(binaryEquipmentId, NULL, 2) + 1;
+
+        if (equipmentId == atoi(query.targetEquipment))
+        {
+            int beginOfSensorsIndex = 2;
+            for (int i = 0; i < 4; i++)
+            {
+                if (buffer[i + beginOfSensorsIndex] == '1')
+                {
+                    appendToIntArray(&sensors, 1);
+                }
+                else
+                {
+                    appendToIntArray(&sensors, 0);
+                }
+            }
+        }
+    }
+    closeFile(file);
+    return sensors;
+}
+
+CharArray addCommandFeedback(Query query, IntArray result)
+{
+    CharArray feedback;
+    initCharArray(&feedback);
+
+    if (result.array[0] == -2)
+    {
+        concatCharArray(&feedback, "limit exceeded\n");
+        return feedback;
+    }
+    else if (result.array[0] == -3)
+    {
+        concatCharArray(&feedback, "invalid sensor\n");
+        return feedback;
+    }
+
+    concatCharArray(&feedback, "sensor");
+
+    int alreadyExists = 0;
+    int added = 0;
+    for (int i = 0; i < result.size; i++)
+    {
+
+        if (result.array[i] != -1)
+        {
+            appendToCharArray(&feedback, ' ');
+            concatCharArray(&feedback, query.sensorIds[i]);
+            if (added == 0)
+            {
+
+                added = 1;
+            }
+        }
+    }
+
+    if (added)
+    {
+        concatCharArray(&feedback, " added");
+    }
+
+    for (int i = 0; i < result.size; i++)
+    {
+        if (result.array[i] == -1)
+        {
+            appendToCharArray(&feedback, ' ');
+            concatCharArray(&feedback, query.sensorIds[i]);
+            if (alreadyExists == 0)
+            {
+                alreadyExists = 1;
+            }
+        }
+    }
+
+    if (alreadyExists)
+    {
+        concatCharArray(&feedback, " already exists in ");
+        concatCharArray(&feedback, query.targetEquipment);
+    }
+    appendToCharArray(&feedback, '\n');
+    return feedback;
+}
+
+CharArray listCommandFeedback(Query query, IntArray sensors)
+{
+    CharArray feedback;
+    initCharArray(&feedback);
+    int operations = 0;
+    for (int i = 0; i < sensors.size; i++)
+    {
+        if (sensors.array[i] == 1)
+        {
+            appendToCharArray(&feedback, '0');
+            appendToCharArray(&feedback, (i + 1) + '0');
+            appendToCharArray(&feedback, ' ');
+            operations += 3;
+        }
+    }
+
+    if (operations == 0)
+    {
+        concatCharArray(&feedback, "none\n");
+    }
+    else
+    {
+        feedback.array[operations - 1] = '\n';
+    }
+    return feedback;
+}
+
+CharArray removeCommandFeedback(Query query, IntArray result)
+{
+    CharArray feedback;
+    initCharArray(&feedback);
+    if (result.array[0] == -3)
+    {
+        concatCharArray(&feedback, "invalid sensor\n");
+        return feedback;
+    }
+    concatCharArray(&feedback, "sensor");
+
+    int doesNotExist = 0;
+    int removed = 0;
+
+    for (int i = 0; i < result.size; i++)
+    {
+        if (result.array[i] != -1)
+        {
+            appendToCharArray(&feedback, ' ');
+            concatCharArray(&feedback, query.sensorIds[i]);
+            if (removed == 0)
+            {
+                removed = 1;
+            }
+        }
+    }
+
+    if (removed)
+    {
+        concatCharArray(&feedback, " removed");
+    }
+
+    for (int i = 0; i < result.size; i++)
+    {
+        if (result.array[i] == -1)
+        {
+            appendToCharArray(&feedback, ' ');
+            concatCharArray(&feedback, query.sensorIds[i]);
+            if (doesNotExist == 0)
+            {
+                doesNotExist = 1;
+            }
+        }
+    }
+
+    if (doesNotExist)
+    {
+        concatCharArray(&feedback, " does not exist in ");
+        concatCharArray(&feedback, query.targetEquipment);
+    }
+
+    appendToCharArray(&feedback, '\n');
+    return feedback;
+}
+
+CharArray readCommandFeedback(Query query, FloatArray *result)
+{
+
+    CharArray feedback;
+    initCharArray(&feedback);
+
+    FloatArray sensors = result[0];
+    FloatArray notInstalledSensors = result[1];
+
+    if (sensors.used)
+    {
+        char buffer[320];
+        for (int i = 0; i < sensors.size; i++)
+        {
+            memset(buffer, 0, 320);
+            sprintf(buffer, "%.2f", sensors.array[i]);
+            concatCharArray(&feedback, buffer);
+            appendToCharArray(&feedback, ' ');
+        }
+    }
+
+    if (notInstalledSensors.used)
+    {
+        if (sensors.used)
+        {
+            concatCharArray(&feedback, "and ");
+        }
+
+        for (int i = 0; i < notInstalledSensors.size; i++)
+        {
+            appendToCharArray(&feedback, '0');
+            appendToCharArray(&feedback, '0' + notInstalledSensors.array[i]);
+            appendToCharArray(&feedback, ' ');
+        }
+        concatCharArray(&feedback, "not installed ");
+    }
+    feedback.array[feedback.size - 1] = '\n';
+    return feedback;
+}
+
+int main(int argc, char **argv)
+{
+    srand(time(0));
+    clearEquipmentsFile();
+    int serverSocket = initServerSocket(argc, argv);
+
+    while (1)
+    {
+
+        int clientSocket = initClientSocket(serverSocket);
+        char buf[BUFFSIZE];
+        int stop = 0;
+        /**
+         * one recv call is not enough to get all data sent from send()
+         * **/
+        size_t count = 1;
+        while (count > 0)
+        {
+            memset(buf, 0, BUFFSIZE);
+            count = recv(clientSocket, buf, BUFFSIZE, 0);
+            if (count <= 0)
+            {
+                break;
+            }
+            char *clientMessage = strtok(buf, " ");
+            Query query = str2query(clientMessage);
+
+            // if (strncmp(clientMessage, "kill", 4) == 0)
+            if (!query.command)
+            {
+                stop = 1;
+                mySuccess("INVALID COMMAND\n", clientSocket);
+                break;
+            }
+
+            CharArray feedback;
+
+            if (strcmp(query.targetEquipment, "-1") == 0)
+            {
+                concatCharArray(&feedback, "invalid equipment\n");
+            }
+            else if (strcmp(query.command, "add") == 0)
+            {
+                printf("CALLING ADD SENSOR\n");
+                IntArray sensors = toggleSensor(query, '1');
+                feedback = addCommandFeedback(query, sensors);
+            }
+            else if (strcmp(query.command, "list") == 0)
+            {
+                printf("CALLING LIST SENSOR\n");
+                IntArray sensors = listSensors(query);
+                feedback = listCommandFeedback(query, sensors);
+            }
+            else if (strcmp(query.command, "remove") == 0)
+            {
+                printf("CALLING REMOVE SENSOR\n");
+                IntArray sensors = toggleSensor(query, '0');
+                feedback = removeCommandFeedback(query, sensors);
+            }
+            else if (strcmp(query.command, "read") == 0)
+            {
+                printf("CALLING GET SENSOR VALUE\n");
+                FloatArray *result = getSensorValue(query);
+                feedback = readCommandFeedback(query, result);
+            }
+            else
+            {
+                myError("UNKNOWN COMMAND\n");
+            }
+            count = send(clientSocket, feedback.array, feedback.size, 0);
+            if (count != feedback.size)
+            {
+                myError("send");
+            }
+        }
+        printf("[msg] %d bytes: %s", (int)count, buf);
+
+        if (!stop)
+        {
+            // sprintf(buf, "remote endpoint: %.1000s\n", clientAddrStr);
+            count = send(clientSocket, buf, strlen(buf) + 1, 0);
+            if (count != strlen(buf) + 1)
+            {
+                myError("send");
+            }
+            close(clientSocket);
+        }
+    }
 }
